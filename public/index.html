@@ -207,7 +207,7 @@
     <button class="nbtn" id="modlabbtn" onclick="openPage('modlab')">Mod Lab</button>
     <button class="nbtn" onclick="openPage('ci')">CI</button>
     <button class="nbtn" onclick="openPage('claude')">Claude</button>
-    <button class="nbtn" id="vaultbtn" onclick="openVault()" title="quick-write into the vault">Vault</button>
+    <button class="nbtn" id="vaultbtn" onclick="openVault()" title="your notes and Claude's memory; set one up here">Vault</button>
   </nav>
   <div class="banner" id="banner" style="display:none"></div>
   <div class="banner welcome" id="welcome" style="display:none"></div>
@@ -296,7 +296,7 @@ let toolsList=[], palItems=[], palShown=[], palSel=0;
 function buildPalette(){
   palItems=[];
   projects.forEach(p=>palItems.push({icon:p.iconSvg,label:p.name,sub:'workspace',kind:'project',run:()=>openProject(p)}));
-  if(!deckConfig||deckConfig.vault!==false) palItems.push({icon:'',label:'Vault',sub:'quick capture',kind:'action',run:openVault});
+  palItems.push({icon:'',label:'Vault',sub:'notes and Claude\'s memory',kind:'action',run:openVault});
   for(const [k,v] of Object.entries(PAGES)) if(k!=='modlab'||!deckConfig||deckConfig.modlab!==false) palItems.push({icon:'',label:v,sub:'page',kind:'page',run:()=>openPage(k)});
   palItems.push({icon:'',label:'Machine',sub:'meters, orphans, cleanup',kind:'action',run:openDrawer});
   toolsList.forEach(t=>palItems.push({icon:'',label:t.name,sub:(t.projects&&t.projects[0])||t.group||'tool',kind:'tool',run:()=>openToolById(t.id)}));
@@ -438,7 +438,6 @@ async function loadWelcome(){
   const el=$('#welcome');
   let c; try{ c=await api('/api/config'); }catch{ return; }
   deckConfig=c;
-  if(c.vault===false){ const b=$('#vaultbtn'); if(b) b.style.display='none'; }
   if(c.modlab===false){ const b=$('#modlabbtn'); if(b) b.style.display='none'; }
   if(!c.welcome){ el.style.display='none'; return; }
   el.innerHTML=`<span class="bicon" style="color:#6d8bff">&#9670;</span><div><b>These are Deck's examples.</b>`
