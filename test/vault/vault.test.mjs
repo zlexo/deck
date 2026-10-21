@@ -101,7 +101,7 @@ test('create: refuses a folder that is not empty and leaves it as it was; an emp
   const before = snapshot(full);
   const r = await call('POST', '/api/vault/create', { path: full });
   assert.equal(r.code, 409);
-  assert.match(r.body.error, /not empty/);
+  assert.match(r.body.error, /not empty; Create writes only into a new or empty folder/);
   assert.deepEqual(snapshot(full), before, 'nothing written, nothing replaced');
   assert.equal(box.state.vault, undefined, 'nothing recorded');
   const empty = mkdir('empty');
