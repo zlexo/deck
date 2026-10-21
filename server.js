@@ -26,7 +26,16 @@ const paths = require('./lib/core/paths.mjs');
 paths.setDeckRoot(ROOT);
 const seeded = require('./lib/core/config-cli.mjs').seedFromExamples();
 if (seeded) console.log(`first run: ${seeded.length} example files copied into ${paths.tildify(paths.configDir())}`);
-const VAULT = expandHome(process.env.DECK_VAULT || '~/vault');
+// The vault is resolved on every use (lib/core/vault.mjs), so one created or
+// adopted while Deck runs is picked up without a restart.
+const vaultLib = require('./lib/core/vault.mjs');
+const vaultDir = () => vaultLib.vaultDir(state);
+// A path inside the vault; throws when there is none.
+function inVault(...parts) {
+  const v = vaultDir();
+  if (!v) throw Object.assign(new Error('no vault: create one or adopt a folder (/api/vault)'), { status: 409 });
+  return path.join(v, ...parts);
+}
 const LOG_LINES = 500;
 
 // ---------------------------------------------------------------- build identity
@@ -166,12 +175,13 @@ function fmtDur(sec) { const h = Math.floor(sec / 3600), m = Math.round((sec % 3
 function logSession({ project, seconds, mode }) {
   const t = todayStr();
   const line = `- ⏱ **${fmtDur(seconds)}** on **${project}**${mode ? ` (${mode})` : ''} — ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-  appendToFile(path.join(VAULT, 'Daily', `${t}.md`), line);
-  appendToFile(path.join(VAULT, 'Health', 'Time Tracking.md'), `${t} · ${project} · ${fmtDur(seconds)}${mode ? ` · ${mode}` : ''}`);
+  appendToFile(inVault('Daily', `${t}.md`), line);
+  appendToFile(inVault('Health', 'Time Tracking.md'), `${t} · ${project} · ${fmtDur(seconds)}${mode ? ` · ${mode}` : ''}`);
 }
 
-const TASK_FILE = () => path.join(VAULT, 'Tasks', 'Deck.md');
+const TASK_FILE = () => inVault('Tasks', 'Deck.md');
 function readTasks() {
+  if (!vaultDir()) return [];
   const f = TASK_FILE();
   if (!fs.existsSync(f)) return [];
   return fs.readFileSync(f, 'utf8').split('\n').map((l, i) => {
@@ -474,7 +484,7 @@ async function assembleProject(p, allManifests, { full } = {}) {
 // Claude kit, Reviews, Mod Lab, CI panel, Machine guard and Focus mode live in
 // lib/ (docs/v2/contract.md). They get this process's runner through ctx.
 const v2 = require('./lib/v2.mjs').mount({
-  root: ROOT, vault: VAULT,
+  root: ROOT,
   procs, alive, pushLog, spawnRaw, stopProc,
   loadProjects, loadManifests, serverSpecs, probePort,
   getState: () => state,
@@ -557,7 +567,7 @@ async function handle(req, res) {
         dir: paths.tildify(paths.configDir()),
         sources: Object.fromEntries(paths.CONFIG_ITEMS.map(i => [i, paths.configSource(i)])),
         welcome: !!(w.seeded && !w.dismissed),
-        vault: fs.existsSync(VAULT), // the vault features show only when the folder exists
+        vault: !!vaultDir() && fs.existsSync(vaultDir()), // the vault features show only when the folder exists
         modlab: Object.values(loadProjects()).some(p => p.modlab), // Mod Lab only for a project that configures it
       });
     }
@@ -783,7 +793,7 @@ async function handle(req, res) {
           notes.push(`tagged ${tag}${sha ? ' @ ' + sha : ''} (local — push when ready)`);
         }
         try {
-          const f = path.join(VAULT, 'Knowledge', 'Client Deliveries Log.md');
+          const f = inVault('Knowledge', 'Client Deliveries Log.md');
           const row = `| ${todayStr()} | ${p.name} | ${jar.name} | ${tag || '—'} | Deck-shipped |`;
           if (fs.existsSync(f)) {
             const lines = fs.readFileSync(f, 'utf8').split('\n');
@@ -876,15 +886,15 @@ async function handle(req, res) {
       if (!lines.length) return json(res, 200, { ok: true, empty: true });
       const dur = body.seconds ? ` (${fmtDur(body.seconds)})` : '';
       const entry = `- 📓 **Session recap — ${p.name}${dur}** · ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}\n${lines.join('\n')}`;
-      try { appendToFile(path.join(VAULT, 'Daily', `${todayStr()}.md`), entry); return json(res, 200, { ok: true }); }
-      catch (e) { return json(res, 500, { error: e.message }); }
+      try { appendToFile(inVault('Daily', `${todayStr()}.md`), entry); return json(res, 200, { ok: true }); }
+      catch (e) { return json(res, e.status || 500, { error: e.message }); }
     }
 
     // ---- time analytics: parse the ledger into per-project/day totals -------
     if (u.pathname === '/api/vault/time-stats' && req.method === 'GET') {
-      const f = path.join(VAULT, 'Health', 'Time Tracking.md');
+      const v = vaultDir(), f = v && path.join(v, 'Health', 'Time Tracking.md');
       const byProject = {}, byDay = {}; let total = 0;
-      if (fs.existsSync(f)) {
+      if (f && fs.existsSync(f)) {
         for (const l of fs.readFileSync(f, 'utf8').split('\n')) {
           // "YYYY-MM-DD · Project · Xh Ym · mode"
           const m = l.match(/^(\d{4}-\d{2}-\d{2})\s*·\s*(.+?)\s*·\s*(?:(\d+)h\s*)?(?:(\d+)m)?/);
@@ -905,6 +915,7 @@ async function handle(req, res) {
     if (u.pathname === '/api/timer/log' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req) || '{}');
       if (!body.seconds || body.seconds < 30) return json(res, 200, { ok: true, skipped: 'too short' });
+      if (!vaultDir()) return json(res, 200, { ok: true, skipped: 'no vault' });
       try { logSession(body); return json(res, 200, { ok: true }); }
       catch (e) { return json(res, 500, { error: e.message }); }
     }
@@ -919,6 +930,7 @@ async function handle(req, res) {
         else if (body.op === 'toggle') { const t = tasks[body.index]; if (t) t.done = !t.done; }
         else if (body.op === 'delete') tasks.splice(body.index, 1);
         else if (body.op === 'set') tasks = body.tasks || tasks;
+        if (!vaultDir()) return json(res, 409, { error: 'no vault: create one or adopt a folder (/api/vault)' });
         writeTasks(tasks);
         return json(res, 200, { ok: true, tasks: readTasks() });
       }
@@ -926,17 +938,21 @@ async function handle(req, res) {
 
     // ---- vault quick actions ------------------------------------------------
     if (u.pathname === '/api/vault/daily' && req.method === 'GET') {
-      const f = path.join(VAULT, 'Daily', `${todayStr()}.md`);
-      return json(res, 200, { date: todayStr(), exists: fs.existsSync(f), content: fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '' });
+      const v = vaultDir(), f = v && path.join(v, 'Daily', `${todayStr()}.md`);
+      const exists = !!f && fs.existsSync(f);
+      return json(res, 200, { date: todayStr(), exists, content: exists ? fs.readFileSync(f, 'utf8') : '' });
     }
     if (u.pathname === '/api/vault/capture' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req) || '{}');
       const text = (body.text || '').trim(); if (!text) return json(res, 400, { error: 'empty' });
-      try { appendToFile(path.join(VAULT, 'Daily', `${todayStr()}.md`), `- 💭 ${text}`); return json(res, 200, { ok: true }); }
-      catch (e) { return json(res, 500, { error: e.message }); }
+      try { appendToFile(inVault('Daily', `${todayStr()}.md`), `- 💭 ${text}`); return json(res, 200, { ok: true }); }
+      catch (e) { return json(res, e.status || 500, { error: e.message }); }
     }
     if (u.pathname === '/api/vault/recent' && req.method === 'GET') {
-      const out = await runSafe('bash', ['-c', `find '${VAULT}' -name '*.md' -not -path '*/.*' -type f -exec stat -f '%m%t%N' {} + 2>/dev/null | sort -rn | head -14`]);
+      // The folder goes in as $1, never into the script: an adopted vault's
+      // path is whatever the user picked, quotes included.
+      const v = vaultDir();
+      const out = !v ? '' : await runSafe('bash', ['-c', `find "$1" -name '*.md' -not -path '*/.*' -type f -exec stat -f '%m%t%N' {} + 2>/dev/null | sort -rn | head -14`, 'recent', v]);
       const notes = out.split('\n').filter(Boolean).map(l => { const p = l.split('\t')[1]; return p ? { name: path.basename(p, '.md'), path: p } : null; }).filter(Boolean);
       return json(res, 200, { notes });
     }
