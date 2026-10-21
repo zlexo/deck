@@ -217,7 +217,7 @@ function renderClaude(){
   let h=`<div class="top">${c.connected?'<span class="pill ok">connected</span>':'<span class="pill dim">not connected</span>'}<span class="hint">Claude config folder <code>${esc(c.configDir)}</code></span></div>`;
   if(c.connected){
     const am=c.autoMemory||{};
-    h+=`<div class="kv"><span>Rules file</span><span><code>${esc(c.rulesFile&&c.rulesFile.path)}</code></span><span>Folder access</span><span><code>${esc(c.additionalDirectory)}</code></span>
+    h+=`<div class="kv"><span>Rules file</span><span><code>${esc(c.rulesFile&&c.rulesFile.path)}</code></span><span>Folder access</span><span>the vault, in <code>permissions.additionalDirectories</code></span>
       <span>Auto memory</span><span>${am.on?`in the vault, <code>${esc(am.dir)}</code>`:'per repository (Claude Code\'s default)'}</span></div>`;
     h+=C.armed==='disconnect'?`<div class="acts"><button class="danger" data-c="disconnect-go" ${dis}>${C.busy?'Disconnecting…':'Confirm disconnect'}</button><button data-c="cancel">Cancel</button><span class="hint">Removes the rules file and the keys Connect added. The vault stays.</span></div>`
       :`<div class="acts"><button data-c="disconnect">Disconnect</button></div>`;
