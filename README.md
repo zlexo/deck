@@ -262,6 +262,16 @@ Deck keeps its own config outside the checkout, in
 | `merge.authorEmail` | the merge commit's author email (else git's `user.email`) |
 | `focus`, `guard` | the Focus plan; the guard's meter thresholds and an extra cleanup target |
 | `apps.sources` | the GitHub owners whose `deck-app` repos the Apps page lists |
+| `vault.path` | the vault folder; Create and Adopt set it |
+| `vault.created` | set by Create; a created vault's git mode defaults to `auto` |
+| `vault.git` | `auto`, `push` or `off` |
+| `vault.remote` | the vault's GitHub repo, `owner/name` |
+| `vault.memoryMirror` | a folder copied into the vault's `Memory/` |
+| `claude.configDir` | Claude Code's config folder for Connect (Deck.app sees no shell variables) |
+
+`DECK_VAULT` wins over `vault.path` (Create and Adopt refuse while it is set);
+without either, Deck uses `~/vault` when it exists. A vault from `DECK_VAULT`
+or `~/vault` has git `off`.
 
 [`examples/state.example.json`](examples/state.example.json) is a worked setup
 for a C++ engine and a web app.
