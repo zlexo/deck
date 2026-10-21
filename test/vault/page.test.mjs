@@ -84,7 +84,7 @@ test('apps route: only vault:true apps, each with its status line from its own r
     notes: { id: 'notes', name: 'Notes', vault: true, url: base, status: '/plain' },
     quiet: { id: 'quiet', name: 'Quiet', vault: true, url: base },
     broken: { id: 'broken', name: 'Broken', vault: true, url: base, status: '/nope' },
-    away: { id: 'away', name: 'Away', vault: true, url: 'http://example.com/', status: '/api/status' },
+    away: { id: 'away', name: 'Away', vault: true, url: 'http://example.invalid/', status: '/api/status' },
     down: { id: 'down', name: 'Down', vault: true, url: 'http://127.0.0.1:1/', status: '/api/status' },
     other: { id: 'other', name: 'Other', url: base, status: '/api/status' },
     falsy: { id: 'falsy', name: 'Falsy', vault: 'yes', url: base },

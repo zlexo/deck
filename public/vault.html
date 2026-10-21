@@ -3,7 +3,7 @@
 <style>
   :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface3:#1b2430;
     --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;--accent:#34d399;--pc:#34d399;--warn:#fbbf24;--bad:#f87171}
-  *{box-sizing:border-box}
+  *{box-sizing:border-box}[hidden]{display:none!important}
   body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
   body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
     background:radial-gradient(720px 420px at 12% -10%, #34d3990f, transparent 70%)}
@@ -74,7 +74,7 @@
   .cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:10px;overflow-x:auto}
   .col{background:#0d1219;border:1px solid var(--line);padding:9px 10px;min-width:0}
   .col h3{margin:0 0 7px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between}
-  .card{font-size:12px;padding:6px 8px;background:var(--surface);border:1px solid var(--line);margin-bottom:5px;overflow-wrap:anywhere}
+  .card{font-size:12px;padding:6px 8px;background:var(--surface);border:1px solid var(--line);margin-bottom:5px;overflow-wrap:break-word}
   .card.done{color:var(--faint);text-decoration:line-through}
   .app{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid #131a24}.app:last-child{border:0}
   .app .grow{flex:1;min-width:0}.app .st{font-size:12px;color:var(--dim)}
