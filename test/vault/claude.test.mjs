@@ -182,3 +182,22 @@ test('status: auto memory files that stop loading are counted under projects/*/m
   assert.equal(r.body.configDir, cfg);
   assert.ok(MARK.startsWith('<!--'), 'the owner line is a comment Claude Code does not show');
 });
+
+test('deck vault: connect --dry-run --no-auto-memory shows the diff and writes nothing; connect, status, disconnect', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const deck = (...args) => spawnSync(process.execPath, [path.join(import.meta.dirname, '..', '..', 'bin', 'deck.mjs'), 'vault', ...args], { encoding: 'utf8', env: { ...process.env, DECK_ROOT: '' } });
+  fs.writeFileSync(settings, '{\n  "model": "opus"\n}\n');
+  const dry = deck('connect', '--dry-run', '--no-auto-memory');
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.ok(dry.stdout.includes(`+       ${JSON.stringify(vault)}`), dry.stdout);
+  assert.ok(!dry.stdout.includes('autoMemoryDirectory'));
+  assert.match(dry.stdout, /dry run: nothing written/);
+  assert.ok(!fs.existsSync(rules) && !backups().length);
+  assert.equal(deck('connect').status, 0);
+  assert.match(deck('status').stdout, /connected {6}yes/);
+  assert.match(deck('connect').stdout, /already connected/);
+  assert.equal(deck('disconnect').status, 0);
+  assert.equal(read(settings), '{\n  "model": "opus"\n}\n');
+  assert.ok(!fs.existsSync(path.dirname(rules)), 'the rules folder Connect made is gone');
+  assert.equal(deck('connect', '--bogus').status, 1);
+});

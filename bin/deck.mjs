@@ -17,6 +17,7 @@ const COMMANDS = {
   claude: '../lib/claude/cli.mjs',
   modlab: '../lib/modlab/cli.mjs',
   config: '../lib/core/config-cli.mjs',
+  vault: '../lib/vault/cli.mjs',
 };
 
 const USAGE = `usage:
@@ -32,6 +33,9 @@ const USAGE = `usage:
   deck modlab run <project> [scenario ...]     run a Mod Lab bench through the running Deck
   deck config                                  where each config item is read from
   deck config migrate [--dry-run]              copy the checkout's config into the config folder
+  deck vault status                            the vault's connection to Claude Code
+  deck vault connect [--dry-run] [--no-auto-memory]
+  deck vault disconnect
 repos: the ids in state.json's \`repos\` section (\`deck config\` shows where state.json is)`;
 
 const [cmd, ...rest] = process.argv.slice(2);
