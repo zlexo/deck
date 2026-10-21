@@ -241,7 +241,10 @@ try {
   if (!mem.text.includes(M)) fail(`with auto memory pointed into the vault, a session did not quote the memory sentinel. It said ${quote(mem.text)}`);
   say('auto memory on: a session quotes the memory sentinel too');
 
-  // 5. A kit call, through the kit's own CLI route: neither sentinel.
+  // 5. A kit call, through the kit's own CLI route: neither sentinel. On
+  // Claude Code 2.1.305 either half of the kit's isolation keeps auto memory
+  // out alone (--safe-mode does too), so the memory sentinel shows only when
+  // both are dropped; the vault sentinel shows without --safe-mode.
   calls++;
   let kit;
   try {
