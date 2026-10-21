@@ -83,7 +83,8 @@ test('create: copies the template into the data folder once, records it, a secon
   const dest = path.join(process.env.DECK_DATA, 'vault');
   assert.equal(r.body.path, dest);
   assert.deepEqual(box.state.vault, { path: dest, created: true });
-  assert.deepEqual(files(dest), files(templateDir()), 'every template file, empty folders included');
+  assert.deepEqual(files(dest).filter(f => !f.startsWith('.git/')), files(templateDir()), 'every template file, empty folders included');
+  assert.ok(fs.existsSync(path.join(dest, '.git')), 'and its first commit (test/vault/git.test.mjs)');
   for (const f of ['CLAUDE.md', 'Home.md', 'Boards/Work.md', '.gitignore', 'Daily/.gitkeep'])
     assert.equal(fs.readFileSync(path.join(dest, f), 'utf8'), fs.readFileSync(path.join(templateDir(), f), 'utf8'), f);
   assert.equal(vaultDir(box.state), dest);
