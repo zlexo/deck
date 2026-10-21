@@ -161,7 +161,7 @@ and writes into as it works: the board of what is in flight, a note per
 project with its decisions, a line per day. Deck keeps it in git and pushes it
 only to a private GitHub repo.
 
-![The Vault page: the vault in Deck's data folder, Claude Code connected, and the board as columns](docs/media/vault.png)
+![The Vault page: the vault in Deck's data folder, Claude Code connected with auto memory in the vault, and the board as columns](docs/media/vault.png)
 
 **Create or adopt.** Create on the Vault page copies a starter vault into
 Deck's data folder, `~/Library/Application Support/Deck/vault` (not synced to
@@ -315,7 +315,7 @@ either an Anthropic API key or Claude Code logged in.
 
 ## Development
 
-- `npm test`: the unit and gateway tests (327). They run with `DECK_CLI=off`,
+- `npm test`: the unit and gateway tests (329). They run with `DECK_CLI=off`,
   so no test can reach a real `claude` CLI.
 - `npm run check`: syntax of every file, the tests, and a smoke test of the
   compiled gateway with launchd's bare PATH.
