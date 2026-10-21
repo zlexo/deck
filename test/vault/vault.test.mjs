@@ -167,6 +167,7 @@ test('gateway: a vault created while Deck runs lights up capture and reaches a v
     assert.equal((await call('GET', '/api/config')).body.vault, true);
     assert.equal((await call('POST', '/api/vault/capture', { text: 'first thought' })).code, 200);
     assert.match(fs.readFileSync(path.join(vault, 'Daily', `${todayStr()}.md`), 'utf8'), /first thought/);
+    assert.ok((await call('GET', '/api/vault/recent')).body.notes.some(n => n.path === path.join(vault, 'Home.md')), 'recent notes come from the new vault');
     assert.equal((await call('POST', '/api/tools/reader/start')).code, 200);
     for (let i = 0; i < 50 && !fs.existsSync(out); i++) await new Promise(r => setTimeout(r, 100));
     assert.equal(JSON.parse(fs.readFileSync(out, 'utf8')).vault, vault);
