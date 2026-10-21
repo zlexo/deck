@@ -491,6 +491,7 @@ const v2 = require('./lib/v2.mjs').mount({
   root: ROOT,
   procs, alive, pushLog, spawnRaw, stopProc,
   loadProjects, loadManifests, serverSpecs, probePort,
+  toolUrl: m => toolUrl(m, toolConfig(m)),
   getState: () => state,
   saveState: next => { state = next; saveState(next); },
 });
