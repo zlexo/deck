@@ -47,6 +47,7 @@ if (skipAt >= 0 && !['connect', 'disconnect'].includes(SKIP)) notRun(`--skip tak
 // ---------------------------------------------------------------- guards
 const HOME = os.homedir();
 const DATA = path.resolve(process.env.CHECK_VAULT_DATA || path.join(HOME, '.cache', 'deck-check', 'Application Support', 'Deck'));
+const DEFAULT_DATA = !process.env.CHECK_VAULT_DATA;
 const CLAUDE_DIR = path.resolve(process.env.CHECK_VAULT_CLAUDE || path.join(HOME, '.cache', 'deck-check', 'claude'));
 
 // A path with its symlinks resolved, also when its last parts do not exist yet.
@@ -137,6 +138,8 @@ if (fs.existsSync(RULES)) {
   say('a previous run left a connection: disconnected it first');
 }
 const settingsBefore = readOr(SETTINGS);
+const backups = () => new Set(fs.readdirSync(CLAUDE_DIR).filter(f => f.startsWith('settings.json.deck-')));
+const backupsBefore = backups();
 fs.rmSync(DATA, { recursive: true, force: true });
 const GW_HOME = path.join(DATA, 'home'); // the gateway's home: no ~/vault for it to fall back to
 const CONFIG = path.join(DATA, 'config');
@@ -189,8 +192,12 @@ async function cleanup() {
     try { if (gw && gw.exitCode === null) await api('POST', '/api/vault/disconnect'); } catch {}
     if (fs.existsSync(RULES)) disconnect({ state: { vault: { path: VAULT } } });
   }
+  // Connect's backups from this run hold nothing once the config is back as it was.
+  if (!fs.existsSync(RULES) && readOr(SETTINGS) === settingsBefore)
+    for (const f of backups()) if (!backupsBefore.has(f)) fs.rmSync(path.join(CLAUDE_DIR, f));
   await stopGateway();
   fs.rmSync(DATA, { recursive: true, force: true });
+  if (DEFAULT_DATA) try { fs.rmdirSync(path.dirname(DATA)); } catch {} // the empty Application Support above it
   fs.rmSync(EMPTY, { recursive: true, force: true });
 }
 
