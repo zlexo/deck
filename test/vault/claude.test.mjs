@@ -158,6 +158,12 @@ test('disconnect: no settings.json before means none after; a key added since st
   assert.equal(read(path.join(cfg, backups()[0])), '', 'an empty backup: there was no file');
   await call('POST', '/api/vault/disconnect');
   assert.ok(!fs.existsSync(settings));
+  for (const empty of ['{"permissions":{}}', '{"permissions":{"additionalDirectories":[]}}']) {
+    fs.writeFileSync(settings, empty);
+    await call('POST', '/api/vault/connect', {});
+    await call('POST', '/api/vault/disconnect');
+    assert.equal(read(settings), empty, 'an empty object or list the user had stays');
+  }
   fs.writeFileSync(settings, ORIGINAL);
   await call('POST', '/api/vault/connect', {});
   const s = JSON.parse(read(settings));
