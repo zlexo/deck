@@ -108,3 +108,56 @@ test('mirror: refused while Claude Code writes its auto memory straight into the
     assert.ok(!fs.existsSync(path.join(s.dir, 'Memory')));
   } finally { fs.rmSync(settings); }
 });
+
+test('mirror: a file git ignores in Memory/ is never deleted or overwritten', async () => {
+  const s = mirrored();
+  write(s.dir, '.gitignore', '*.draft\n');
+  sh(s.dir, 'add', '.gitignore');
+  sh(s.dir, 'commit', '-q', '-m', 'ignore drafts');
+  write(s.dir, 'Memory/notes.draft', 'mine\n');
+  await s.vg.pushNow();
+  assert.match((await s.vg.status()).error, /git ignores that the mirror would change \(notes\.draft\)/);
+  assert.equal(fs.readFileSync(path.join(s.dir, 'Memory/notes.draft'), 'utf8'), 'mine\n');
+  assert.ok(!fs.existsSync(path.join(s.dir, 'Memory/a.md')), 'nothing mirrored');
+});
+
+test('mirror: a source file named "*.md" never pulls a held file into the commit', async () => {
+  const mem = memory({ 'k.md': 'clean\n' });
+  const s = adopted({ vault: { memoryMirror: mem } });
+  await s.vg.pushNow();
+  write(mem, 'k.md', `${key('Anthropic key')}\n`);
+  write(mem, '*.md', 'star\n');
+  write(s.dir, 'Memory/k.md', `${key('Anthropic key')}\n`); // what a cut pass leaves: equal to its source
+  await s.vg.pushNow();
+  assert.deepEqual(sh(s.dir, 'show', '--name-only', '--format=%s', 'HEAD').split('\n').filter(Boolean), ['Memory: 1 file', 'Memory/*.md']);
+  assert.equal(sh(s.dir, 'show', 'HEAD:Memory/k.md'), 'clean', 'the held file was not committed');
+  assert.deepEqual((await s.vg.status()).secrets.map(h => h.file), ['Memory/k.md']);
+  assert.equal(staged(s.dir), '');
+});
+
+test('mirror: another session\'s lock between add and reset does not stop pushing; the leftover commits later', async () => {
+  let s, armed = true;
+  s = mirrored({ hook: async () => { if (armed) { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
+  await s.vg.tick();
+  s.clock.t = QUIET_MS; await s.vg.tick();
+  const st = await s.vg.status();
+  assert.match(st.error, /could not unstage Memory .*tried again next pass/);
+  assert.equal(st.blocked, false);
+  fs.rmSync(path.join(s.dir, '.git', 'index.lock'));
+  s.clock.t = 2 * QUIET_MS; await s.vg.tick();
+  s.clock.t = 3 * QUIET_MS; await s.vg.tick();
+  assert.equal(log(s.dir)[0], 'Memory: 2 files');
+  assert.equal(remoteHead(s.bare), sh(s.dir, 'rev-parse', 'HEAD'), 'pushed by the timer');
+  assert.equal((await s.vg.status()).error, null);
+});
+
+test('mirror: a pass with nothing to commit clears the last Memory error', async () => {
+  let s, armed = true;
+  s = mirrored({ hook: async () => { if (armed) { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
+  await s.vg.pushNow();
+  assert.match((await s.vg.status()).error, /could not unstage/);
+  fs.rmSync(path.join(s.dir, '.git', 'index.lock'));
+  sh(s.dir, 'commit', '-q', '-m', 'Memory, by hand'); // another session commits the leftover
+  await s.vg.pushNow();
+  assert.equal((await s.vg.status()).error, null);
+});
