@@ -14,7 +14,7 @@ const cfg = path.join(tmp, 'claude config');
 process.env.CLAUDE_CONFIG_DIR = cfg;
 const vault = path.join(tmp, 'my vault');
 process.env.DECK_VAULT = vault;
-const { claudeConfigDir, rulesText, MARK } = await import('../../lib/vault/claude.mjs');
+const { claudeConfigDir, rulesText, MARK, connect } = await import('../../lib/vault/claude.mjs');
 const { register } = await import('../../lib/vault/index.mjs');
 const { createRouter } = await import('../../lib/core/http.mjs');
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -207,4 +207,15 @@ test('deck vault: connect --dry-run --no-auto-memory shows the diff and writes n
   assert.equal(read(settings), '{\n  "model": "opus"\n}\n');
   assert.ok(!fs.existsSync(path.dirname(rules)), 'the rules folder Connect made is gone');
   assert.equal(deck('connect', '--bogus').status, 1);
+});
+
+test('connect: two backups at the same instant get two names', () => {
+  const now = new Date(Date.UTC(2026, 9, 21, 12));
+  fs.writeFileSync(settings, '{}');
+  const a = connect({ state: {}, autoMemory: false, now });
+  const b = connect({ state: {}, autoMemory: true, now });
+  assert.equal(path.basename(a.backup), 'settings.json.deck-20261021T120000000Z');
+  assert.equal(path.basename(b.backup), 'settings.json.deck-20261021T120000000Z-1');
+  assert.equal(read(a.backup), '{}');
+  assert.equal(read(b.backup), a.changes.find(c => c.path === settings).after, 'the second holds what the first Connect wrote');
 });
