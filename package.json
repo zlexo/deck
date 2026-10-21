@@ -8,6 +8,7 @@
     "test": "DECK_CLI=off node --test 'test/**/*.test.mjs'",
     "check": "node scripts/check.mjs",
     "check:quit": "tauri build --bundles app --config src-tauri/tauri.quitcheck.conf.json && node scripts/check-quit.mjs --remove-app",
+    "check:vault": "node scripts/check-vault.mjs",
     "cli:install": "node scripts/install-cli.mjs",
     "tauri": "tauri",
     "app:dev": "tauri dev",
