@@ -44,6 +44,8 @@ test('manifest: what makes a deck.json an app', () => {
   assert.match(manifestProblem({ ...school, cmd: [] }), /needs a cmd/);
   assert.match(manifestProblem({ ...school, install: ['npm ci'] }), /list of commands/);
   assert.match(manifestProblem({ ...school, packs: 'Not A Topic' }), /topic name/);
+  assert.equal(manifestProblem({ ...school, vault: true }), null);
+  assert.match(manifestProblem({ ...school, vault: 'yes' }), /vault must be true or false/);
 });
 
 test('sources: only owner names from state.json, none by default', () => {
