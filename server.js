@@ -330,8 +330,11 @@ async function statusOf(id, m) {
 // silently ignored, which is the exact failure class prelaunch exists to kill.
 // An app's data and its content packs live outside its folder, so updating or
 // removing the app never touches what it saved (manifest `data`, `packs`).
+// `vault: true` gives the app the vault Deck resolves as DECK_VAULT; no other
+// tool gets it, not even through Deck's own environment.
 function appEnv(m) {
   const env = {};
+  if (m.vault === true) { const v = vaultDir(); if (v) env.DECK_VAULT = v; }
   if (m.data) { const d = paths.dataPath('app-data', m.id); fs.mkdirSync(d, { recursive: true }); env.DECK_APP_DATA = d; }
   if (m.packs) { const d = paths.dataPath('packs', m.id); fs.mkdirSync(d, { recursive: true }); env.DECK_APP_PACKS = d; }
   return env;
@@ -349,7 +352,8 @@ async function startTool(id, m, prelaunch) {
   if (!fs.existsSync(cwd)) throw new Error(`cwd not found: ${cwd}`);
   const steps = [...(m.prelaunch || []), ...(prelaunch || [])];
   const [bin, spawnArgs] = resolveSpawn([...m.cmd, ...args], cwd, steps, [...m.cmd.slice(1), ...args]);
-  const child = spawn(bin, spawnArgs, { cwd, env: { ...process.env, ...appEnv(m), ...env } });
+  const { DECK_VAULT: _ownVault, ...inherited } = process.env;
+  const child = spawn(bin, spawnArgs, { cwd, env: { ...inherited, ...appEnv(m), ...env } });
   procs[id] = { child, logs: [], startedAt: Date.now() };
   v2.onLaunch(id);
   pushLog(id, `[deck] started: ${m.cmd.join(' ')} ${args.join(' ')}${prelaunchNote(steps)}`);
