@@ -160,7 +160,8 @@ test('disconnect: no settings.json before means none after; a key added since st
   assert.ok(!fs.existsSync(settings));
   for (const empty of ['{"permissions":{}}', '{"permissions":{"additionalDirectories":[]}}']) {
     fs.writeFileSync(settings, empty);
-    await call('POST', '/api/vault/connect', {});
+    assert.equal((await call('POST', '/api/vault/connect', {})).code, 200, 'a second backup in the same second gets its own name');
+    assert.ok(JSON.parse(read(settings)).permissions.additionalDirectories.includes(vault));
     await call('POST', '/api/vault/disconnect');
     assert.equal(read(settings), empty, 'an empty object or list the user had stays');
   }
