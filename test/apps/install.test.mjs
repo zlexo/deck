@@ -153,7 +153,7 @@ test('routes: an app whose id a tool of yours already has is shown as taken, and
   assert.equal(state.apps.installed, undefined, 'nothing recorded');
 });
 
-test('gateway: a started app gets its data and packs folders, outside its own', async () => {
+test('gateway: a started app gets its data and packs folders, outside its own; only a vault: true app gets DECK_VAULT', async () => {
   const { spawn } = await import('node:child_process');
   const net = await import('node:net');
   const { fileURLToPath } = await import('node:url');
@@ -164,7 +164,12 @@ test('gateway: a started app gets its data and packs folders, outside its own', 
   fs.writeFileSync(path.join(cfg, 'state.json'), '{"scanRoots":[]}');
   const out = path.join(tmp, 'env-seen.json');
   fs.writeFileSync(path.join(dir, 'deck.json'), JSON.stringify({ id: 'envapp', name: 'Env', cwd: '{app}', data: true, packs: 'env-pack',
-    cmd: ['node', '-e', `require('fs').writeFileSync(${JSON.stringify(out)}, JSON.stringify({ data: process.env.DECK_APP_DATA, packs: process.env.DECK_APP_PACKS }))`] }));
+    cmd: ['node', '-e', `require('fs').writeFileSync(${JSON.stringify(out)}, JSON.stringify({ data: process.env.DECK_APP_DATA, packs: process.env.DECK_APP_PACKS, vault: process.env.DECK_VAULT }))`] }));
+  // The gateway runs with DECK_VAULT set: an app without vault: true must not inherit it.
+  const vaultOut = path.join(tmp, 'vault-seen.json');
+  fs.mkdirSync(path.join(data, 'apps', 'vaultapp'));
+  fs.writeFileSync(path.join(data, 'apps', 'vaultapp', 'deck.json'), JSON.stringify({ id: 'vaultapp', name: 'Vault', cwd: '{app}', vault: true,
+    cmd: ['node', '-e', `require('fs').writeFileSync(${JSON.stringify(vaultOut)}, JSON.stringify({ vault: process.env.DECK_VAULT }))`] }));
   const port = await new Promise(r => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => r(p)); }); });
   const child = spawn(process.execPath, [path.join(REPO, 'server.js')], { cwd: REPO, stdio: 'ignore',
     env: { ...process.env, PORT: String(port), DECK_ROOT: REPO, DECK_CONFIG: cfg, DECK_DATA: data, DECK_VAULT: path.join(tmp, 'vault'), DECK_NO_BACKGROUND: '1', DECK_HOST: '' } });
@@ -178,5 +183,10 @@ test('gateway: a started app gets its data and packs folders, outside its own', 
     assert.equal(seen.data, path.join(data, 'app-data', 'envapp'));
     assert.equal(seen.packs, path.join(data, 'packs', 'envapp'));
     assert.ok(fs.statSync(seen.data).isDirectory() && fs.statSync(seen.packs).isDirectory(), 'made before the app starts');
+    assert.equal(seen.vault, undefined, 'an app without vault: true does not see the vault');
+    const v = await fetch(`http://127.0.0.1:${port}/api/tools/vaultapp/start`, { method: 'POST' });
+    assert.equal(v.status, 200, await v.text());
+    for (let i = 0; i < 50 && !fs.existsSync(vaultOut); i++) await new Promise(res => setTimeout(res, 100));
+    assert.equal(JSON.parse(fs.readFileSync(vaultOut, 'utf8')).vault, path.join(tmp, 'vault'));
   } finally { child.kill('SIGKILL'); }
 });
