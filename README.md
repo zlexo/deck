@@ -153,11 +153,98 @@ and a cleanup drawer of folders that can be rebuilt (build output, package
 caches, render leftovers), each with its size and what rebuilds it. Every path
 is checked against its rule again right before it is deleted.
 
-### Focus and the vault (optional)
+### The vault: a memory for Claude Code (optional)
 
-With an Obsidian vault, Deck can capture notes into it, and **Focus** reads a
-plan table from a note to put the current main project first on the home grid.
-Without a vault, those parts stay hidden.
+Claude Code starts every session blank. The vault is a private folder of plain
+markdown notes on your Mac that every Claude Code session reads before it acts
+and writes into as it works: the board of what is in flight, a note per
+project with its decisions, a line per day. Deck keeps it in git and pushes it
+only to a private GitHub repo.
+
+![The Vault page: the vault in Deck's data folder, Claude Code connected, and the board as columns](docs/media/vault.png)
+
+**Create or adopt.** Create on the Vault page copies a starter vault into
+Deck's data folder, `~/Library/Application Support/Deck/vault` (not synced to
+iCloud, backed up by Time Machine), and makes its first commit:
+`CLAUDE.md` (the manual Claude follows), `Home.md` (the index),
+`Boards/Work.md` (Backlog, This Week, In Progress, Waiting On, Done), and
+`Daily/`, `Projects/`, `Knowledge/` and `Templates/`. It writes only into a new
+or empty folder. Or point Deck at a folder you already have: it is used as it
+is, and Deck writes nothing into it. Deck never deletes a vault.
+
+**Connect.** Connect changes exactly two files in Claude Code's config folder
+(`$CLAUDE_CONFIG_DIR`, else `claude.configDir` in `state.json`, else
+`~/.claude`), and shows them as a diff before it writes anything:
+
+- `rules/deck-vault.md`, a file Deck owns, which Claude Code loads in every
+  project. It imports the vault's `CLAUDE.md`, so the manual is in every
+  session, started from any folder.
+- `settings.json`: the vault is added to `permissions.additionalDirectories`,
+  so sessions read and edit it like their own folder. With the auto memory box
+  ticked, `autoMemoryDirectory` points at the vault's `Memory/`, one memory for
+  every project instead of one per repository; the box says how many
+  per-repository memory files stop loading (they stay where they are).
+
+`settings.json` is parsed first (if it does not parse, Deck changes nothing and
+shows the lines to add by hand), copied to `settings.json.deck-<timestamp>`
+beside itself, and written atomically. Connect refuses a rules file it did not
+write, and an `autoMemoryDirectory` that already points somewhere else.
+**Disconnect** takes out the rules file and the keys Connect added; when
+nothing else changed since, `settings.json` is the backup's bytes again. The
+vault stays. Disconnect before removing Deck.
+
+**Deck's own calls stay out.** The Claude kit's calls through your login run
+with `--safe-mode` (no `CLAUDE.md`, rules files, hooks, plugins, skills or MCP)
+and with auto memory switched off, so a review never carries your vault or
+your memory. The one vault note a review reads is
+`Knowledge/Review Lessons/<repo>.md`, when it exists.
+
+**Git.** `vault.git` picks the mode:
+
+- `auto`, the default for a vault Deck created: commit after 10 quiet minutes
+  (nothing in the vault changed) and at quit, then push. One commit per quiet
+  spell, `Vault: N notes`, with the files in its body.
+- `push`: Deck never commits the vault; it pushes `main` once it has been still
+  for 10 minutes, for a vault something else commits to.
+- `off`: status only. An adopted vault starts here.
+
+Every commit is scanned for secrets first (Anthropic, OpenAI and GitHub tokens,
+AWS key ids, private-key blocks). A file with a hit is held back and the page
+shows where, never what. Before every push the commits origin does not have are
+scanned again, merge resolutions included, and Deck asks GitHub whether the
+repo is private: public, internal or no answer means no push, and the page
+says why. The remote is a GitHub repo you name, or one Create private repo
+makes (`gh repo create <name> --private`, the command shown first). Only
+`main` is pushed, and only the exact commit that was scanned.
+
+When origin has commits this Mac does not, `auto` merges them only on a clean
+tree, after testing the merge in memory (`git merge-tree`); a conflict touches
+nothing, stops pushing and lists the files. Never a rebase. `push` never
+merges, and quit never fetches or merges: what is left waits for the next
+start.
+
+**The memory mirror.** `vault.memoryMirror` names a folder (one of Claude
+Code's auto memory folders, say) that Deck copies into `Memory/` and commits on
+its own, in `auto` and `push`. It never overwrites or deletes a `Memory/` file
+it did not write, never copies a file with a secret in it, and stays off while
+Claude Code writes its auto memory into the vault itself.
+
+**The page.** The Vault page shows the setup panel until there is a vault,
+then the path (Open in Obsidian, Show in Finder, Copy path), Claude Code's
+connection with Connect and Disconnect, the board as read-only columns, and
+git: the mode, changes waiting, the last commit and its files, the remote with
+its private check, ahead and behind, the last push, Commit now and Push now.
+Below them: quick capture into today's daily note, the daily itself, recent
+notes, tasks and this week's focus time.
+
+**Apps that use the vault.** An app whose `deck.json` says `"vault": true`
+gets the vault's path as `DECK_VAULT` when Deck starts it; no other tool does.
+The page lists these apps with Open and, when the manifest names a `status`
+route on this Mac, its one-line status.
+
+**Focus.** With a vault, **Focus** reads a plan table from a note
+(`focus.goals`) to put the current main project first on the home grid. Without
+a vault or a plan, the grid shows everything.
 
 ## Configuration
 
