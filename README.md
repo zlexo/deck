@@ -287,6 +287,10 @@ deck ci <repo> <pr|sha|main>             run CI in a throwaway worktree
 deck claude                              the route, keys, spend, last calls
 deck config                              where the config is read from
 deck config migrate [--dry-run]          move a checkout's config into the config folder
+deck vault status                        the vault's connection to Claude Code
+deck vault connect [--dry-run] [--no-auto-memory]
+                                         show the changes, then make them
+deck vault disconnect                    take out what Connect added
 ```
 
 `npm run cli:install` puts `deck` on your PATH.
