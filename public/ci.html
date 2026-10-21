@@ -1,0 +1,168 @@
+<!doctype html><meta charset="utf-8"><title>CI</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface2:#161d27;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#7dd3fc;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(720px 420px at 12% -10%, #7dd3fc10, transparent 70%)}
+  .wrap{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:30px 30px 90px}
+  h1{font-size:22px;font-weight:720;letter-spacing:-.02em;margin:0 0 3px;display:flex;align-items:center;gap:11px}
+  .glyph{width:30px;height:30px}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 24px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);order:2}
+  .lbl .tail{order:3;text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--faint)}
+  .lbl .act{order:4;display:flex;gap:6px;text-transform:none;letter-spacing:0}
+  .panel{background:var(--surface);border:1px solid var(--line)}
+  button{border:1px solid var(--line2);background:var(--surface3);color:var(--text);padding:6px 12px;font:600 12px inherit;cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--faint)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121c}
+  button.primary:hover{filter:brightness(1.08)}
+  button[disabled]{opacity:.45;cursor:default}
+  input.pr{width:74px;background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:6px 8px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+  input.pr:focus{outline:0;border-color:var(--accent)}
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--line2);color:var(--faint);white-space:nowrap}
+  .st .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .st.green{color:#86efac;border-color:#1f6f52;background:#0c1f17}
+  .st.red{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .st.running,.st.queued{color:#fcd38a;border-color:#6f5c1f;background:#211c0d}
+  .st.running .d{animation:pulse 1.2s ease-in-out infinite}
+  .st.error{color:#c4b5fd;border-color:#4c3a7a;background:#160f26}
+  .st.skipped,.st.pending{color:var(--faint)}
+  @keyframes pulse{50%{opacity:.25}}
+  /* the live run */
+  .live{border:1px solid #6f5c1f;background:linear-gradient(180deg,#1d190d,var(--surface));padding:16px 18px}
+  .live .lt{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .live .lt b{font-size:15px}
+  .live .lt .mono{color:var(--dim)}
+  .jobs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
+  .job{display:flex;flex-direction:column;gap:4px;min-width:110px;padding:8px 10px;border:1px solid var(--line);background:var(--bg2);cursor:pointer}
+  .job .jn{font-size:12px;font-weight:640;display:flex;align-items:center;gap:7px}
+  .job .jn .d{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .job.green .d{background:var(--ok)}.job.red .d{background:var(--bad)}.job.running .d{background:var(--warn);animation:pulse 1.2s infinite}
+  .job .jd{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .job.sel{border-color:var(--accent)}
+  .log{font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a9b8c6;background:#06090d;border:1px solid var(--line);
+    padding:10px 12px;margin-top:12px;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+  .log .err{color:#fca5a5}.log .ok{color:#86efac}
+  /* repo sections */
+  .repo{margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:640;padding:10px 12px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 12px;border-bottom:1px solid #131a24;color:var(--dim);vertical-align:middle}
+  tr.rec{cursor:pointer}
+  tr.rec:hover td{background:#0f151d}
+  tr.open td{background:#0f151d}
+  td.mono,.mono{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .segs{display:flex;gap:3px}
+  .seg{width:22px;height:6px;background:var(--line2)}
+  .seg.green{background:var(--ok)}.seg.red{background:var(--bad)}.seg.running{background:var(--warn)}.seg.skipped{background:#242e3a}
+  .detail td{padding:0 12px 14px}
+  .empty{color:var(--faint);font-size:12.5px;padding:16px 14px}
+  .note{color:var(--faint);font-size:11.5px;margin-top:8px}
+  .summary{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim);margin-top:6px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <h1><span class="glyph"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#08131a"/>
+    <path d="M7 16.5l5 5L25 9" stroke="#7dd3fc" stroke-width="2.6" stroke-linecap="square"/></svg></span> CI</h1>
+  <p class="sub">Each repo's GitHub CI jobs, run here on the exact head in a throwaway copy, one run at a time. A PR's review waits for its green record.</p>
+  <div id="live"></div>
+  <div id="repos"><div class="empty">loading</div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2400)}
+const dur=ms=>{ if(ms==null) return ''; const s=Math.round(ms/1000); return s<60?s+'s':s<3600?Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s':Math.floor(s/3600)+'h '+Math.round(s%3600/60)+'m'; };
+const when=ts=>{ if(!ts) return ''; const d=new Date(ts), now=new Date(); const t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return d.toDateString()===now.toDateString()?t:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+t; };
+const st=(s,label)=>`<span class="st ${esc(s)}"><span class="d"></span>${esc(label||s)}</span>`;
+const elapsed=r=>r.finishedAt?r.finishedAt-r.startedAt:Date.now()-(r.startedAt||Date.now());
+
+let data=null, open=null /* repo:sha */, pickedJob={} /* repo:sha -> job */, logs={}, prVals={};
+
+function jobChips(r){
+  const key=r.repo+':'+r.sha;
+  return `<div class="jobs">${r.jobs.map(j=>`<div class="job ${esc(j.status)} ${pickedJob[key]===j.name?'sel':''}" onclick="event.stopPropagation();pickJob('${r.repo}','${r.sha}','${esc(j.name)}')">
+    <span class="jn"><span class="d"></span>${esc(j.name)}</span><span class="jd">${j.status==='running'||j.status==='skipped'||j.status==='pending'?j.status:dur(j.durationMs)}</span></div>`).join('')}</div>`;
+}
+function logBox(r){
+  const key=r.repo+':'+r.sha, job=pickedJob[key];
+  if(!job) return '';
+  const lines=logs[key+':'+job];
+  const fmt=l=>{ const e=esc(l); return /error|fail|FAILED|✖/i.test(l)?`<span class="err">${e}</span>`:/passed|BUILD SUCCESSFUL|✔/i.test(l)?`<span class="ok">${e}</span>`:e; };
+  const j=r.jobs.find(x=>x.name===job)||{};
+  const sum=j.summary&&Object.keys(j.summary).length?`<div class="summary">${esc(Object.entries(j.summary).map(([k,v])=>`${k}: ${Array.isArray(v)?(v.length?v.join(' '):'none'):typeof v==='object'?JSON.stringify(v):v}`).join('   '))}</div>`:'';
+  return `${sum}<div class="log" id="log-${esc(key)}">${lines?lines.map(fmt).join('\n')||'(empty)':'loading log'}</div>`;
+}
+async function pickJob(repo,sha,job){
+  const key=repo+':'+sha;
+  pickedJob[key]=pickedJob[key]===job?null:job;
+  if(pickedJob[key]) await loadLog(repo,sha,job);
+  render();
+}
+async function loadLog(repo,sha,job){
+  try{ const {lines}=await api(`/api/ci/log?repo=${repo}&sha=${sha}&job=${encodeURIComponent(job)}&lines=200`); logs[repo+':'+sha+':'+job]=lines; }
+  catch(e){ logs[repo+':'+sha+':'+job]=['(no log: '+e.message+')']; }
+}
+
+function renderLive(){
+  const r=data.running;
+  if(!r){ $('#live').innerHTML=data.queue&&data.queue.length?`<div class="lbl">Queue</div><div class="panel"><table><tbody>${data.queue.map(q=>`<tr><td><b>${esc(q.repo)}</b></td><td class="mono">${esc((q.sha||'').slice(0,7))}</td><td>${q.pr?'#'+q.pr:''}</td><td>${st('queued')}</td></tr>`).join('')}</tbody></table></div>`:''; return; }
+  const rec=(data.repos.find(x=>x.id===r.repo)||{records:[]}).records.find(x=>x.sha===r.sha);
+  const key=r.repo+':'+r.sha;
+  if(rec&&!pickedJob[key]){ const j=rec.jobs.find(x=>x.status==='running'); if(j) pickedJob[key]=j.name; }
+  $('#live').innerHTML=`<div class="lbl">Running now<span class="tail">${data.queue&&data.queue.length?data.queue.length+' queued':''}</span></div>
+    <div class="live"><div class="lt">${st('running')}<b>${esc(r.repo)}</b><span class="mono">${esc(r.sha.slice(0,7))}</span>${r.pr?`<span>#${r.pr}</span>`:''}<span style="color:var(--faint)">${rec?dur(elapsed(rec)):''}${r.job?' · '+esc(r.job):''}</span></div>
+    ${rec?jobChips(rec)+logBox(rec):''}</div>`;
+  const box=document.getElementById('log-'+key); if(box) box.scrollTop=box.scrollHeight;
+}
+
+function recordRow(r){
+  const key=r.repo+':'+r.sha, isOpen=open===key;
+  const segs=`<span class="segs">${r.jobs.map(j=>`<span class="seg ${esc(j.status)}" title="${esc(j.name)}: ${esc(j.status)}"></span>`).join('')}</span>`;
+  return `<tr class="rec ${isOpen?'open':''}" onclick="toggle('${key}')"><td class="mono">${esc(r.sha.slice(0,7))}</td><td>${r.pr?'#'+r.pr:r.ref==='main'||(r.ref||'').endsWith('/main')?'main':''}</td>
+    <td>${st(r.status)}</td><td>${segs}</td><td class="num">${dur(r.durationMs||elapsed(r))}</td><td class="num">${when(r.startedAt)}</td></tr>
+    ${isOpen?`<tr class="detail"><td colspan="6">${jobChips(r)}${r.error?`<div class="note" style="color:#c4b5fd">${esc(r.error)}</div>`:''}${logBox(r)}</td></tr>`:''}`;
+}
+function toggle(key){ open=open===key?null:key; render(); }
+
+function render(){
+  renderLive();
+  $('#repos').innerHTML=data.repos.map(repo=>`
+    <div class="lbl">${esc(repo.name)}<span class="tail">${!repo.latest?'no runs yet':repo.latest.status==='running'||repo.latest.status==='queued'?repo.latest.status+' since '+when(repo.latest.startedAt):'last '+repo.latest.status+' '+when(repo.latest.finishedAt||repo.latest.startedAt)}</span>
+      <span class="act"><input class="pr" id="pr-${repo.id}" placeholder="PR #" inputmode="numeric" value="${esc(prVals[repo.id]||'')}" oninput="prVals['${repo.id}']=this.value" onkeydown="if(event.key==='Enter')runPr('${repo.id}')">
+      <button onclick="runPr('${repo.id}')">Run PR</button><button class="primary" onclick="runMain('${repo.id}')">Run main</button></span></div>
+    <div class="panel repo">${repo.records.length?`<table><thead><tr><th>Head</th><th>For</th><th>Result</th><th>Jobs</th><th style="text-align:right">Took</th><th style="text-align:right">When</th></tr></thead><tbody>${repo.records.map(recordRow).join('')}</tbody></table>`
+      :'<div class="empty">No CI records for this repo yet.</div>'}</div>`).join('');
+}
+
+async function run(body){
+  try{ const r=await api('/api/ci/run',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); toast(`queued ${body.repo} ${(r.sha||'').slice(0,7)}`); refresh(); }
+  catch(e){ toast(e.message); }
+}
+function runMain(repo){ run({repo,ref:'main'}); }
+function runPr(repo){ const v=Number((prVals[repo]||'').replace('#','')); if(!v) return toast('enter a PR number'); prVals[repo]=''; run({repo,pr:v}); }
+
+async function refresh(){
+  try{ data=await api('/api/ci'); }catch(e){ $('#repos').innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  // keep the live job's log fresh: follow the running job unless another was picked
+  if(data.running){
+    const r=data.running, k=r.repo+':'+r.sha;
+    const rec=(data.repos.find(x=>x.id===r.repo)||{records:[]}).records.find(x=>x.sha===r.sha);
+    if(!pickedJob[k]&&rec){ const j=rec.jobs.find(x=>x.status==='running'); if(j) pickedJob[k]=j.name; }
+    if(pickedJob[k]) await loadLog(r.repo,r.sha,pickedJob[k]);
+  }
+  const active=document.activeElement&&document.activeElement.classList.contains('pr')?document.activeElement.id:null;
+  render();
+  if(active){ const el=document.getElementById(active); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } }
+}
+refresh(); setInterval(refresh,2500);
+</script>

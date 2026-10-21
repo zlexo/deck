@@ -1,0 +1,24 @@
+{
+  "id": "deck",
+  "name": "Deck",
+  "iconSvg": "<svg viewBox='0 0 32 32' fill='none'><rect width='32' height='32' fill='#0d1117'/><rect x='6' y='7' width='20' height='5' rx='1' fill='#6d8bff'/><rect x='6' y='14' width='20' height='5' rx='1' fill='#5a6b8f'/><rect x='6' y='21' width='13' height='5' rx='1' fill='#33404f'/><circle cx='24' cy='23.5' r='2' fill='#34d399'/></svg>",
+  "color": "#6d8bff",
+  "description": "This control panel, as a project: its checkout, its git state and the example tools.",
+  "match": [
+    "Deck",
+    "Examples"
+  ],
+  "tags": [
+    "JavaScript",
+    "Rust"
+  ],
+  "repos": [
+    {
+      "path": "{deck}"
+    }
+  ],
+  "site": {
+    "label": "Deck (localhost:8800)",
+    "url": "http://localhost:8800"
+  }
+}

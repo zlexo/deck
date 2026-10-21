@@ -1,0 +1,547 @@
+<!doctype html><meta charset="utf-8"><title>Deck</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#0a0d12; --bg2:#0d1117;
+    --surface:#12171f; --surface2:#161d27; --surface3:#1b2430;
+    --line:#212b38; --line2:#2c3a4b;
+    --text:#e8eef4; --dim:#8b98a7; --faint:#5f6b78;
+    --accent:#6d8bff; --live:#34d399; --ext:#fbbf24; --danger:#f87171;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{font:14px/1.55 -apple-system,system-ui,"SF Pro Text",sans-serif;color:var(--text);margin:0;
+    background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(700px 440px at 12% -10%, #6d8bff18, transparent 70%),
+      radial-gradient(760px 460px at 90% -12%, #34d3990e, transparent 72%)}
+  .wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:40px 30px 90px}
+
+  header{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+  .mark{width:40px;height:40px;flex:none;display:grid;place-items:center;
+    background:linear-gradient(150deg,#1c2634,#0f151d);border:1px solid var(--line2);
+    box-shadow:inset 0 1px 0 #ffffff0d,0 6px 18px #0007}
+  .mark svg{width:21px;height:21px}
+  .htext h1{font-size:21px;font-weight:700;letter-spacing:-.02em;margin:0;line-height:1.1}
+  .htext .sub{color:var(--dim);font-size:12.5px;margin:2px 0 0}
+  .spacer{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface);
+    border:1px solid var(--line);font-size:12.5px;color:var(--dim);white-space:nowrap}
+  .pill b{color:var(--text);font-weight:640;font-variant-numeric:tabular-nums}
+  .pill .rd{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .pill.on .rd{background:var(--live);box-shadow:0 0 8px #34d39988}
+  .hbtn{border:1px solid var(--line2);background:var(--surface);color:var(--dim);padding:8px 15px;
+    font:600 12.5px inherit;cursor:pointer;transition:.14s}
+  .hbtn:hover{color:var(--text);border-color:var(--faint);background:var(--surface3)}
+
+  .banner{display:flex;gap:13px;align-items:flex-start;margin-bottom:26px;padding:15px 17px;
+    background:linear-gradient(180deg,#2a1a12,#1a1310);border:1px solid #7c4a22;
+    border-left:3px solid var(--ext);font-size:13px}
+  .banner .bicon{flex:none;color:var(--ext);font-size:15px;line-height:1.35}
+  .banner b{color:#fbd08a;font-weight:640;display:block;margin-bottom:3px}
+  .banner .why{color:var(--dim);font-size:12.5px}
+  .banner.welcome{background:linear-gradient(180deg,#121a2b,#0e1420);border-color:#2b3c63;border-left-color:#6d8bff}
+  .banner.welcome b{color:#c7d4ff}
+  .banner.welcome button{margin-left:auto;flex:none}
+  .banner code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text);
+    background:#0006;border:1px solid #ffffff14;padding:1px 5px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;
+    margin:0 0 16px;display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+  .pcard{position:relative;background:linear-gradient(180deg,var(--surface),var(--bg2));
+    border:1px solid var(--line);padding:22px 22px 18px;cursor:pointer;transition:.18s;overflow:hidden;
+    display:flex;flex-direction:column;gap:14px;min-height:172px}
+  .pcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pc,#6d8bff);opacity:.0;transition:.18s}
+  .pcard:hover{border-color:var(--line2);transform:translateY(-3px);box-shadow:0 18px 40px -18px #000c}
+  .pcard:hover::before{opacity:1}
+  .pcard .top{display:flex;align-items:flex-start;gap:14px}
+  .picon{width:52px;height:52px;flex:none;overflow:hidden;border:1px solid var(--line2);border-radius:2px}
+  .picon svg{width:100%;height:100%;display:block}
+  .pname{font-size:17px;font-weight:680;letter-spacing:-.01em;margin:12px 0 5px}
+  .pdesc{color:var(--dim);font-size:12.5px;line-height:1.5;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .pfoot{margin-top:auto;display:flex;align-items:center;gap:12px;padding-top:4px;
+    font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .stat{display:inline-flex;align-items:center;gap:6px}
+  .stat .d{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .stat .d.on{background:var(--live);box-shadow:0 0 7px #34d39980}
+  .stat .d.warn{background:var(--ext)}
+  .stat .d.bad{background:var(--danger)}
+  .deliverychip{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    color:#e6c65a;background:#2a2410;border:1px solid #6f5c1f;padding:3px 9px}
+  .ptags{display:flex;flex-wrap:wrap;gap:6px}
+  .ptag{font-size:10.5px;color:var(--dim);background:var(--surface3);border:1px solid var(--line);padding:2px 8px;font-weight:500}
+  .pcat{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--line2)}
+  .pcat.personal{color:#a9c0ff;border-color:#2a3a63;background:#141d33}
+  .pcat.client{color:#e6c65a;border-color:#6f5c1f;background:#221d0e}
+  .enter{position:absolute;right:18px;bottom:16px;color:var(--faint);opacity:0;transition:.18s}
+  .pcard:hover .enter{opacity:1;color:var(--pc,#6d8bff)}
+  /* needs-attention strip */
+  .attn{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .achip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;background:var(--surface);
+    border:1px solid var(--line);font-size:12px;color:var(--dim);cursor:pointer;transition:.14s}
+  .achip:hover{border-color:var(--line2);color:var(--text);transform:translateY(-1px)}
+  .achip .d{width:7px;height:7px;border-radius:50%;flex:none}
+  .achip .d.s1{background:#f2a9a9}.achip .d.s2{background:#a9c0ff}.achip .d.s3{background:var(--ext)}
+  .achip .pn{color:var(--faint)}
+  /* ⌘K palette */
+  .pal{position:fixed;inset:0;background:#05070aee;z-index:40;display:none;align-items:flex-start;justify-content:center;padding-top:14vh}
+  .pal.show{display:flex}
+  .palbox{width:min(620px,92vw);background:var(--surface);border:1px solid var(--line2);box-shadow:0 30px 80px -20px #000e}
+  .palbox input{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);
+    padding:16px 18px;font:15px inherit;outline:0}
+  .palres{max-height:52vh;overflow:auto;padding:6px}
+  .pi{display:flex;align-items:center;gap:11px;padding:10px 12px;cursor:pointer;color:var(--dim)}
+  .pi.sel{background:#1b2430;color:var(--text)}
+  .pi .pic{width:22px;height:22px;flex:none;border:1px solid var(--line2);overflow:hidden;display:grid;place-items:center}
+  .pi .pic svg{width:100%;height:100%}
+  .pi .plabel{flex:1;font-size:13.5px}.pi .plabel b{font-weight:600;color:var(--text)}
+  .pi .pkind{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);border:1px solid var(--line);padding:2px 7px}
+  .palhint{padding:9px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--faint);display:flex;gap:16px}
+  .palhint kbd{background:var(--surface3);border:1px solid var(--line2);padding:1px 6px;font:11px ui-monospace,monospace}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;
+    background:var(--surface3);border:1px solid var(--line2);color:var(--text);padding:10px 16px;
+    font-size:13px;z-index:9;transition:.22s;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg);border-radius:0}
+
+  /* v2: page buttons, machine meters */
+  .htop{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .nav{display:flex;gap:6px;flex-wrap:wrap;margin:-18px 0 30px 54px}
+  .nbtn{border:1px solid var(--line);background:transparent;color:var(--dim);padding:6px 12px;font:600 12px inherit;cursor:pointer;transition:.14s;display:inline-flex;align-items:center;gap:7px}
+  .nbtn:hover{color:var(--text);border-color:var(--line2);background:var(--surface)}
+  .nbtn .cnt{font-size:10.5px;font-weight:700;color:#fca5a5;background:#2a1414;border:1px solid #7c2a2a;padding:0 6px}
+  .meters{display:flex;gap:10px;align-items:center;cursor:pointer;padding:6px 10px;border:1px solid transparent;transition:.14s}
+  .meters:hover{border-color:var(--line);background:var(--surface)}
+  .mtr{display:flex;flex-direction:column;gap:4px;min-width:62px}
+  .mtr .mt{display:flex;justify-content:space-between;gap:8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:640}
+  .mtr .mt b{color:var(--dim);font-weight:600;letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+  .mtr .mb{height:3px;background:#0b1117;position:relative;overflow:hidden}
+  .mtr .mb i{position:absolute;left:0;top:0;bottom:0;background:#3a4a5e}
+  .mtr.warn .mb i{background:var(--ext)} .mtr.warn .mt b{color:#fcd38a}
+  .mtr.bad .mb i{background:var(--danger)} .mtr.bad .mt b{color:#fca5a5}
+  /* v2: focus grid */
+  .lbl .ltail{margin-left:auto;order:3;text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);font-size:12px}
+  .lbl::after{order:2}
+  .lbtn{order:4;border:0;background:none;color:var(--dim);font:600 11.5px inherit;cursor:pointer;padding:2px 0 2px 10px;text-transform:none;letter-spacing:0}
+  .lbtn:hover{color:var(--text)}
+  .pcard.main{grid-column:span 2;min-height:200px;padding:26px 26px 20px}
+  .pcard.main .picon{width:64px;height:64px}
+  .pcard.main .pname{font-size:22px;margin-top:14px}
+  .pcard.main .pdesc{max-width:620px}
+  .pcard .mainchip{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pc,#6d8bff);border:1px solid var(--line2);padding:2px 8px;margin-left:auto;align-self:flex-start}
+  @media(max-width:760px){.pcard.main{grid-column:auto}}
+  .shelf{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .schip{display:inline-flex;align-items:center;gap:8px;padding:6px 11px 6px 7px;background:var(--bg2);border:1px solid var(--line);
+    color:var(--faint);font-size:12.5px;cursor:pointer;transition:.14s}
+  .schip:hover{color:var(--text);border-color:var(--line2);background:var(--surface)}
+  .schip .si{width:20px;height:20px;overflow:hidden;opacity:.7;flex:none}
+  .schip:hover .si{opacity:1}
+  .schip .si svg{width:100%;height:100%;display:block}
+  .focuserr{font-size:12px;color:var(--faint);margin:-6px 0 14px}
+  /* v2: CI and review badges on cards */
+  .bdg{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:640;padding:2px 7px;border:1px solid var(--line2);color:var(--faint)}
+  .bdg .d{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  .bdg.green .d,.bdg.passed .d{background:var(--live)} .bdg.green,.bdg.passed{color:#86efac;border-color:#1f6f52}
+  .bdg.red .d,.bdg.blocked .d{background:var(--danger)} .bdg.red,.bdg.blocked{color:#fca5a5;border-color:#7c2a2a}
+  .bdg.running .d,.bdg.notes .d{background:var(--ext)} .bdg.running,.bdg.notes{color:#fcd38a;border-color:#6f5c1f}
+  .bdg.running .d{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .achip .d.s0{background:var(--faint)}
+  /* v2: machine drawer */
+  .scrim{position:fixed;inset:0;background:#05070a99;z-index:30;opacity:0;pointer-events:none;transition:.2s}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,94vw);background:var(--bg2);border-left:1px solid var(--line2);z-index:31;
+    transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-30px 0 60px -30px #000c}
+  .drawer.show{transform:none}
+  .dh{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .dh h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .dh .x{margin-left:auto;cursor:pointer;color:var(--faint);font-size:15px;padding:4px 6px}
+  .dh .x:hover{color:var(--text)}
+  .db{flex:1;overflow:auto;padding:4px 20px 30px}
+  .db .lbl{margin:20px 0 10px}
+  .big{display:grid;grid-template-columns:52px 1fr 92px;gap:10px;align-items:center;font-size:12.5px;padding:5px 0}
+  .big .bn{color:var(--dim)} .big .bv{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+  .big .bb{height:6px;background:#0b1117;border:1px solid var(--line);position:relative;overflow:hidden}
+  .big .bb i{position:absolute;left:0;top:0;bottom:0;background:#3a4a5e}
+  .big.warn .bb i{background:var(--ext)} .big.bad .bb i{background:var(--danger)}
+  .row2{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #131a24;font-size:12.5px}
+  .row2 .rk{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line2);padding:1px 6px;flex:none}
+  .row2 .rt{flex:1;min-width:0}
+  .row2 .rt .r1{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row2 .rt .r2{color:var(--faint);font-size:11.5px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row2 .rs{color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+  .row2 .rt .r2.wrap{white-space:normal;overflow:visible}
+  .tg{width:16px;height:16px;border:1.5px solid var(--line2);flex:none;cursor:pointer;display:grid;place-items:center;transition:.12s}
+  .tg.on{background:var(--accent);border-color:var(--accent)}
+  .dbtn{border:1px solid var(--line2);background:var(--surface3);color:var(--text);padding:7px 13px;font:600 12px inherit;cursor:pointer;transition:.14s}
+  .dbtn:hover{border-color:var(--faint)}
+  .dbtn.arm{background:#3a1515;border-color:var(--danger);color:#fecaca}
+  .dbtn[disabled]{opacity:.45;cursor:default}
+  .dfoot{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .dfoot .sum{color:var(--dim);font-size:12px;flex:1}
+  .dnote{color:var(--faint);font-size:11.5px;margin-top:8px;line-height:1.5}
+  .dempty{color:var(--faint);font-size:12.5px;padding:10px 0}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <header>
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="5" rx="0" fill="#6d8bff"/>
+        <rect x="3" y="10.5" width="18" height="5" rx="0" fill="#5a6b8f"/>
+        <rect x="3" y="17" width="12" height="5" rx="0" fill="#33404f"/>
+        <circle cx="19" cy="19.5" r="2" fill="#34d399"/></svg>
+    </div>
+    <div class="htext"><h1>Deck</h1><p class="sub">Your projects. Sit down and work.</p></div>
+    <div class="spacer"></div>
+    <div class="meters" id="meters" onclick="openDrawer()" title="Memory, swap and disk. Click for the machine drawer: orphans and cleanup."></div>
+    <span class="pill" id="pill"><span class="rd"></span><span id="pilltext">…</span></span>
+  </header>
+  <nav class="nav">
+    <button class="nbtn" onclick="openPage('reviews')">Reviews<span class="cnt" id="rvcnt" style="display:none"></span></button>
+    <button class="nbtn" onclick="openPage('apps')">Apps</button>
+    <button class="nbtn" id="modlabbtn" onclick="openPage('modlab')">Mod Lab</button>
+    <button class="nbtn" onclick="openPage('ci')">CI</button>
+    <button class="nbtn" onclick="openPage('claude')">Claude</button>
+    <button class="nbtn" id="vaultbtn" onclick="openVault()" title="quick-write into the vault">Vault</button>
+  </nav>
+  <div class="banner" id="banner" style="display:none"></div>
+  <div class="banner welcome" id="welcome" style="display:none"></div>
+  <div id="attnwrap" style="display:none"><div class="lbl">Needs attention</div><div class="attn" id="attn"></div></div>
+  <div id="projects"></div>
+</div>
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer" aria-label="Machine">
+  <div class="dh"><h2>Machine</h2><span class="x" onclick="closeDrawer()">&#10005;</span></div>
+  <div class="db" id="dbody"></div>
+</aside>
+<div class="pal" id="pal">
+  <div class="palbox">
+    <input id="palq" placeholder="Jump to a project, tool, or action…" autocomplete="off" spellcheck="false">
+    <div class="palres" id="palres"></div>
+    <div class="palhint"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span><span><kbd>esc</kbd> close</span></div>
+  </div>
+</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const invoke=window.__TAURI__?.core?.invoke;
+let projects=[];
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2400)}
+const ENTER='<svg class="enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+// Open a project workspace as its own tab (browser-style). id "proj:<id>" so it
+// never collides with a tool tab; falls back to navigation in a plain browser.
+async function openProject(p){
+  const url=location.origin+'/workspace.html?p='+encodeURIComponent(p.id);
+  if(invoke){ try{ await invoke('open_tool',{id:'proj:'+p.id,name:p.name,url}); }catch(e){ toast('open failed: '+e) } }
+  else location.href=url;
+}
+async function openVault(){
+  const url=location.origin+'/vault.html';
+  if(invoke){ try{ await invoke('open_tool',{id:'vault-console',name:'Vault',url}); }catch(e){ toast('open failed: '+e) } }
+  else location.href=url;
+}
+// v2 pages open as their own tabs, like the vault page.
+const PAGES={apps:'Apps',reviews:'Reviews',modlab:'Mod Lab',ci:'CI',claude:'Claude'};
+async function openPage(name,qs=''){
+  const url=location.origin+'/'+name+'.html'+qs;
+  if(invoke){ try{ await invoke('open_tool',{id:'v2-'+name,name:PAGES[name]||name,url}); }catch(e){ toast('open failed: '+e) } }
+  else location.href=url;
+}
+function openProjectId(id){ const p=projects.find(x=>x.id===id); if(p) openProject(p); }
+// The card is the shortcut: a project with exactly one tool opens that tool
+// straight away, skipping the workspace. The description lives in the
+// workspace and on the card's hover title, not on the home grid.
+function soleTool(p){
+  if(p.toolCount!==1) return null;
+  const names=new Set([p.name,...(p.match||[])]);
+  return toolsList.find(t=>[t.group,...(t.projects||[])].filter(Boolean).some(g=>names.has(g)))||null;
+}
+function openCard(id){ const p=projects.find(x=>x.id===id); if(!p) return; const t=soleTool(p); if(t) openToolById(t.id); else openProject(p); }
+async function openToolById(id){
+  const t=toolsList.find(x=>x.id===id); if(!t) return;
+  if(!t.url){ try{ await api('/api/tools/'+id+'/start',{method:'POST'}); toast('started '+t.name); }catch(e){ toast(e.message); } return; }
+  if(t.status!=='running'&&t.status!=='external'){ try{ await api('/api/tools/'+id+'/start',{method:'POST'}); await new Promise(r=>setTimeout(r,900)); }catch(e){ return toast('start failed'); } }
+  if(invoke){ try{ await invoke('open_tool',{id:t.id,name:t.name,url:t.url}); }catch(e){ toast('open failed'); } } else window.open(t.url,'_blank');
+}
+
+// ---- needs-attention strip ----
+// server.js's git items plus v2's: blocked reviews, red CI, the machine,
+// credits. A v2 item names the page that opens it.
+let attnItems=[];
+async function loadHealth(){
+  try{ const [h,v]=await Promise.all([api('/api/health'),api('/api/v2/attention').catch(()=>({items:[]}))]);
+    attnItems=[...v.items,...h.items].sort((a,b)=>b.sev-a.sev);
+    const w=$('#attnwrap');
+    const rv=v.items.filter(i=>i.kind==='review-blocked').length;
+    $('#rvcnt').style.display=rv?'':'none'; $('#rvcnt').textContent=rv;
+    if(!attnItems.length){ w.style.display='none'; return; }
+    w.style.display='';
+    $('#attn').innerHTML=attnItems.map((it,i)=>`<span class="achip" onclick="attnOpen(${i})"><span class="d s${it.sev}"></span>${esc(it.text)}${it.name?` <span class="pn">${esc(it.name)}</span>`:''}</span>`).join('');
+  }catch{}
+}
+function attnOpen(i){ const it=attnItems[i]; if(!it) return;
+  if(it.open==='machine') return openDrawer();
+  if(it.open) return openPage(it.open);
+  openProjectId(it.project); }
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---- ⌘K command palette ----
+let toolsList=[], palItems=[], palShown=[], palSel=0;
+function buildPalette(){
+  palItems=[];
+  projects.forEach(p=>palItems.push({icon:p.iconSvg,label:p.name,sub:'workspace',kind:'project',run:()=>openProject(p)}));
+  if(!deckConfig||deckConfig.vault!==false) palItems.push({icon:'',label:'Vault',sub:'quick capture',kind:'action',run:openVault});
+  for(const [k,v] of Object.entries(PAGES)) if(k!=='modlab'||!deckConfig||deckConfig.modlab!==false) palItems.push({icon:'',label:v,sub:'page',kind:'page',run:()=>openPage(k)});
+  palItems.push({icon:'',label:'Machine',sub:'meters, orphans, cleanup',kind:'action',run:openDrawer});
+  toolsList.forEach(t=>palItems.push({icon:'',label:t.name,sub:(t.projects&&t.projects[0])||t.group||'tool',kind:'tool',run:()=>openToolById(t.id)}));
+}
+const fuzzy=(q,s)=>{ q=q.toLowerCase();s=s.toLowerCase(); if(!q)return true; let i=0; for(const c of s){ if(c===q[i])i++; if(i>=q.length)return true;} return false; };
+function renderPal(){
+  const q=$('#palq').value.trim();
+  palShown=palItems.filter(it=>fuzzy(q,it.label+' '+(it.sub||'')));
+  if(palSel>=palShown.length)palSel=Math.max(0,palShown.length-1);
+  $('#palres').innerHTML=palShown.map((it,i)=>`<div class="pi ${i===palSel?'sel':''}" onmousedown="event.preventDefault();palRun(${i})" onmousemove="if(palSel!==${i}){palSel=${i};renderPal();}">
+    <div class="pic">${it.icon||''}</div><div class="plabel"><b>${it.label}</b>${it.sub?' · '+it.sub:''}</div><div class="pkind">${it.kind}</div></div>`).join('')||'<div class="pi">no matches</div>';
+}
+function palRun(i){ const it=palShown[i]; closePalette(); if(it&&it.run) it.run(); }
+function openPalette(){ buildPalette(); $('#palq').value=''; palSel=0; $('#pal').classList.add('show'); renderPal(); setTimeout(()=>$('#palq').focus(),30); }
+function closePalette(){ $('#pal').classList.remove('show'); }
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){ e.preventDefault(); $('#pal').classList.contains('show')?closePalette():openPalette(); return; }
+  if(!$('#pal').classList.contains('show')) return;
+  if(e.key==='Escape') closePalette();
+  else if(e.key==='ArrowDown'){ e.preventDefault(); palSel=Math.min(palSel+1,palShown.length-1); renderPal(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); palSel=Math.max(palSel-1,0); renderPal(); }
+  else if(e.key==='Enter'){ e.preventDefault(); palRun(palSel); }
+});
+$('#palq').addEventListener('input',renderPal);
+
+let badges={}, focus=null, guard=null;
+function bdg(b){
+  if(!b) return '';
+  const ci=b.ci?`<span class="bdg ${b.ci}" title="CI ${b.ci} (${b.repo})"><span class="d"></span>CI</span>`:'';
+  const RV={passed:'Review passed',notes:'Review: notes',blocked:'Review blocked'};
+  const rv=b.review?`<span class="bdg ${b.review}" title="${RV[b.review]} (${b.repo})"><span class="d"></span>${b.review==='blocked'?'Blocked':'Review'}</span>`:'';
+  return ci+rv;
+}
+function card(p,opts={}){
+  const d=p._detail||{};
+  const dc=d.devClient, sv=d.server;
+  const dirty=(d.git||[]).reduce((n,g)=>n+(g.dirty||0),0);
+  const cls=s=>s==='running'?'on':s==='external'?'warn':'';
+  return `<div class="pcard${opts.main?' main':''}" style="--pc:${p.color}" title="${(p.description||'').replace(/"/g,'&quot;')}" onclick='openCard("${p.id}")'>
+    <div class="top">
+      <div class="picon">${p.iconSvg||''}</div>
+      <div style="min-width:0">
+        <div class="pname">${p.name}</div>
+        ${opts.main&&p.description?`<div class="pdesc">${esc(p.description)}</div>`:''}
+      </div>
+      ${opts.main?`<span class="mainchip">${esc(opts.main)}</span>`:''}
+    </div>
+    <div class="ptags">
+      ${p.category?`<span class="pcat ${p.category}">${p.category}</span>`:''}
+      ${(p.tags||[]).map(t=>`<span class="ptag">${t}</span>`).join('')}
+    </div>
+    <div class="pfoot">
+      <span class="stat">${p.toolCount} tool${p.toolCount===1?'':'s'}</span>
+      ${sv?`<span class="stat" title="server ${sv.status}"><span class="d ${cls(sv.status)}"></span>${sv.label||'server'}</span>`:''}
+      ${dc&&dc.status==='running'?`<span class="stat" title="dev client running"><span class="d on"></span>client</span>`:''}
+      ${dirty?`<span class="stat" title="${dirty} uncommitted"><span class="d bad"></span>${dirty}</span>`:''}
+      <span style="margin-left:auto;display:inline-flex;gap:6px">${bdg(badges[p.id])}</span>
+    </div>
+    ${ENTER}
+  </div>`;
+}
+
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const day=iso=>{ const [y,m,d]=iso.split('-').map(Number); return `${d} ${MON[m-1]}`; };
+function chip(p){ return `<span class="schip" style="--pc:${p.color}" onclick='openCard("${p.id}")' title="${esc(p.description||'')}"><span class="si">${p.iconSvg||''}</span>${esc(p.name)}</span>`; }
+// Focus: the main first and large, in-flight next, everything else on one
+// Archive row. Off, "show all", or no readable plan: the full grid.
+function render(){
+  const running=projects.filter(p=>(p._detail?.server?.status==='running')||(p._detail?.devClient?.status==='running')).length;
+  $('#pill').classList.toggle('on',running>0);
+  $('#pilltext').innerHTML=running?`<b>${running}</b> active · ${projects.length} projects`:`${projects.length} projects`;
+  const f=focus, byId=Object.fromEntries(projects.map(p=>[p.id,p]));
+  const focused=f&&f.enabled&&!f.showAll&&!f.error&&f.main&&byId[f.main];
+  if(!focused){
+    const toggle=f&&f.enabled&&!f.error?`<button class="lbtn" onclick="setFocus({showAll:false})">Focus</button>`:'';
+    const err=f&&f.enabled&&f.error&&f.configured!==false?`<div class="focuserr">Focus is off: ${esc(f.error)}</div>`:'';
+    $('#projects').innerHTML=`<div class="lbl">Projects ${toggle}</div>${err}<div class="grid">${projects.map(p=>card(p)).join('')}</div>`;
+    return;
+  }
+  const main=byId[f.main], flight=f.inFlight.map(id=>byId[id]).filter(Boolean);
+  const arch=new Set(f.archive.projects);
+  // Anything not main, in flight or archived (a running card) stays up top.
+  const extra=projects.filter(p=>p.id!==f.main&&!f.inFlight.includes(p.id)&&!arch.has(p.id));
+  const archived=projects.filter(p=>arch.has(p.id));
+  const tail=`${esc(f.period.main)} until ${day(f.period.to)}`;
+  $('#projects').innerHTML=`<div class="lbl">Focus<span class="ltail">${tail}</span><button class="lbtn" onclick="setFocus({showAll:true})">Show all ${projects.length}</button></div>
+    <div class="grid">${card(main,{main:'Main'})}${[...flight,...extra].map(p=>card(p)).join('')}</div>
+    ${archived.length?`<div class="lbl" style="margin-top:28px">Archive<span class="ltail">${archived.length}</span></div><div class="shelf">${archived.map(chip).join('')}</div>`:''}`;
+}
+async function setFocus(body){
+  try{ focus=await api('/api/focus',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); render(); }catch(e){ toast(e.message); }
+}
+
+// The gateway ships as a Bun-compiled binary frozen at build time; this page is
+// read live off the checkout. When they drift, a stale backend used to look
+// exactly like "you have no projects": an empty grid, silent. Ask the gateway
+// what it was built from and say it out loud instead. A gateway too old to
+// answer /api/version at all is, by that fact, older than this page.
+function banner(title,why){
+  const el=$('#banner');
+  if(!title){ el.style.display='none'; el.innerHTML=''; return; }
+  el.innerHTML=`<span class="bicon">&#9888;</span><div><b>${title}</b><div class="why">${why}</div></div>`;
+  el.style.display='flex';
+}
+const REBUILD='Rebuild the sidecar: <code>npm run app:build</code> (or run the Deck from source with <code>npm start</code>).';
+// Three distinguishable answers: the version object, 'old' (it answered, but has
+// no such route: it predates this check), or 'offline' (nothing is listening).
+async function gatewayVersion(){
+  try{ const r=await fetch('/api/version'); return r.ok ? await r.json() : 'old'; }catch{ return 'offline' }
+}
+// Called when the gateway answered but might still be behind the checkout.
+async function checkStale(){
+  const v=await gatewayVersion();
+  if(v==='old') return banner('The gateway is older than this page.',
+    `It does not serve <code>/api/version</code>, a route this checkout has, so the bundled sidecar is behind. `+REBUILD);
+  if(v==='offline'||!v.stale) return banner('');
+  banner('The gateway is older than this page.',
+    `The bundled sidecar was compiled from server.js <code>${v.serverHash}</code>`
+    +(v.sha?` at <code>${v.sha}</code>${v.builtAt?', '+v.builtAt.slice(0,10):''}`:'')
+    +`, but the server.js in the checkout is <code>${v.sourceHash}</code>. Routes added since then will 404. `+REBUILD);
+}
+// Called when /api/projects itself failed: the 2026-09-01 outage shape.
+async function gatewayDown(err){
+  const v=await gatewayVersion();
+  if(v==='offline') return banner('The gateway is not answering.',
+    `Nothing is serving <code>localhost:8800</code>. The sidecar exited or never started.`);
+  if(v==='old') return banner('The gateway is older than this page.',
+    `<code>/api/projects</code> failed (<code>${err}</code>) and this gateway is too old to even report a version, `
+    +`so the bundled sidecar predates the routes this page needs. `+REBUILD);
+  if(v.stale) return checkStale();
+  banner('The gateway is up, but /api/projects failed.',
+    `Reported error: <code>${err}</code>. The sidecar is current (<code>${v.serverHash}</code>), so this is a server-side fault, not a stale build.`);
+}
+
+// First run: the cards are the examples Deck copied into its config folder.
+// Say so once, with where your own tools go, until it is dismissed.
+let deckConfig=null;
+async function loadWelcome(){
+  const el=$('#welcome');
+  let c; try{ c=await api('/api/config'); }catch{ return; }
+  deckConfig=c;
+  if(c.vault===false){ const b=$('#vaultbtn'); if(b) b.style.display='none'; }
+  if(c.modlab===false){ const b=$('#modlabbtn'); if(b) b.style.display='none'; }
+  if(!c.welcome){ el.style.display='none'; return; }
+  el.innerHTML=`<span class="bicon" style="color:#6d8bff">&#9670;</span><div><b>These are Deck's examples.</b>`
+    +`<div class="why">A tiny web server, a ticker, and Deck itself as a project. Your own tools go in <code>${c.dir}/tools</code> as JSON manifests, `
+    +`or as a <code>deck.json</code> in any project folder under your home folder; the README has the format.</div></div><button id="welcomeok">Got it</button>`;
+  el.style.display='flex';
+  $('#welcomeok').onclick=async()=>{ try{ await api('/api/config/welcome',{method:'POST'}); el.style.display='none'; }catch(e){ toast(e.message); } };
+}
+loadWelcome();
+
+async function refresh(){
+  let res;
+  try{
+    res=await Promise.all([api('/api/projects'),api('/api/tools').catch(()=>({tools:[]}))]);
+  }catch(e){ return gatewayDown(e.message); }
+  const list=res[0].projects||[];
+  for(const p of list){ const old=projects.find(x=>x.id===p.id); if(old&&old._detail) p._detail=old._detail; }
+  projects=list; toolsList=res[1].tools||[];
+  const [f,b,g]=await Promise.all([api('/api/focus').catch(()=>null),api('/api/badges').catch(()=>null),api('/api/guard').catch(()=>null)]);
+  focus=f; badges=(b&&b.byProject)||{}; guard=g; renderMeters();
+  render(); loadHealth(); checkStale();
+  if($('#drawer').classList.contains('show')) renderDrawerMeters();
+  // fetch per-project detail (status dots) lazily, in parallel
+  await Promise.all(list.map(async p=>{
+    try{ p._detail=(await api('/api/projects/'+p.id)).project; }catch{}
+  }));
+  render();
+}
+// ---- machine meters + drawer (Machine guard) ----
+const GB=1024**3;
+const gbs=b=>b==null?'?':(b/GB).toFixed(b<10*GB?1:0)+' GB';
+const size=b=>!b?'':b>=GB?gbs(b):b>=2**20?Math.round(b/2**20)+' MB':Math.max(1,Math.round(b/1024))+' KB';
+function renderMeters(){
+  const g=guard; if(!g){ $('#meters').innerHTML=''; return; }
+  const ramUsed=g.ram.freePct==null?0:100-g.ram.freePct;
+  const diskUsed=g.disk.totalBytes?Math.round((1-g.disk.freeBytes/g.disk.totalBytes)*100):0;
+  const m=(name,val,pct,level,tip)=>`<div class="mtr ${level==='ok'?'':level}" title="${tip}"><div class="mt">${name}<b>${val}</b></div><div class="mb"><i style="width:${Math.max(2,Math.min(100,pct))}%"></i></div></div>`;
+  $('#meters').innerHTML=m('RAM',gbs(g.ram.freeBytes)+' free',ramUsed,g.ram.level,`${g.ram.freePct}% of memory free`)
+    +m('Swap',g.swap.pct+'%',g.swap.pct,g.swap.level,`${gbs(g.swap.usedBytes)} of ${gbs(g.swap.totalBytes)} swap used`)
+    +m('Disk',gbs(g.disk.freeBytes)+' free',diskUsed,g.disk.level,`${gbs(g.disk.freeBytes)} free on the data volume`);
+}
+let orphans=[], cleanup=null, picked=new Set(), armed=null, armTimer=null;
+function arm(key){ armed=key; clearTimeout(armTimer); armTimer=setTimeout(()=>{ armed=null; renderDrawer(); },4000); renderDrawer(); }
+function openDrawer(){ $('#drawer').classList.add('show'); $('#scrim').classList.add('show'); renderDrawer(); loadOrphans(); loadCleanup(false); }
+function closeDrawer(){ $('#drawer').classList.remove('show'); $('#scrim').classList.remove('show'); armed=null; }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#drawer').classList.contains('show')) closeDrawer(); });
+async function loadOrphans(){ try{ orphans=(await api('/api/guard/orphans')).orphans; }catch{ orphans=[]; } renderDrawer(); }
+async function loadCleanup(refresh){
+  if(refresh){ cleanup={...(cleanup||{}),scanning:true}; renderDrawer(); }
+  try{ cleanup=await api('/api/guard/cleanup'+(refresh?'?refresh=1':'')); }catch(e){ cleanup={error:e.message,targets:[]}; }
+  const ids=new Set(cleanup.targets.map(t=>t.id)); for(const id of [...picked]) if(!ids.has(id)) picked.delete(id);
+  renderDrawer();
+}
+const ago=s=>s==null?'':s<3600?Math.round(s/60)+' min':s<86400?Math.round(s/3600)+' h':Math.round(s/86400)+' d';
+const KIND={'gradle-daemon':'gradle','node':'node','perdix':'perdix','ffmpeg':'ffmpeg','remotion-chrome':'chrome','mc-server':'server','mc-client':'client','other':'java'};
+function renderDrawerMeters(){
+  const g=guard, el=$('#dmeters'); if(!el) return;
+  if(!g){ el.innerHTML='<div class="dempty">no sample yet</div>'; return; }
+  const ramUsed=g.ram.freePct==null?0:100-g.ram.freePct;
+  const diskUsed=g.disk.totalBytes?Math.round((1-g.disk.freeBytes/g.disk.totalBytes)*100):0;
+  const b=(n,v,pct,l)=>`<div class="big ${l==='ok'?'':l}"><span class="bn">${n}</span><span class="bb"><i style="width:${Math.max(1,Math.min(100,pct))}%"></i></span><span class="bv">${v}</span></div>`;
+  el.innerHTML=b('RAM',gbs(g.ram.freeBytes)+' free',ramUsed,g.ram.level)+b('Swap',`${g.swap.pct}% used`,g.swap.pct,g.swap.level)+b('Disk',gbs(g.disk.freeBytes)+' free',diskUsed,g.disk.level)
+    +(g.java.length?g.java.map(j=>`<div class="row2"><span class="rk">${KIND[j.kind]||j.kind}</span><span class="rt"><div class="r2" title="${esc(j.cmd)}">${esc(j.cmd)}</div></span><span class="rs">${gbs(j.rssBytes)}</span></div>`).join(''):'<div class="dnote">No Java running.</div>')
+    +(g.gradleLevel!=='ok'?`<div class="dnote" style="color:#fcd38a">${g.gradleDaemons} Gradle daemons: more than two on 8 GB slows everything. The orphan list below can stop idle ones.</div>`:'');
+}
+function renderDrawer(){
+  const o=orphans.map(x=>`<div class="row2"><span class="rk">${KIND[x.kind]||x.kind}</span><span class="rt"><div class="r1" title="${esc(x.cmd)}">${esc(x.cmd)}</div><div class="r2">pid ${x.pid} · running ${ago(x.ageS)} · ${gbs(x.rssBytes)}</div></span>
+    <button class="dbtn ${armed==='k'+x.pid?'arm':''}" onclick="killOrphan(${x.pid},${x.startedAt})">${armed==='k'+x.pid?'Sure? Stop':'Stop'}</button></div>`).join('');
+  const T=(cleanup&&cleanup.targets)||[];
+  const sel=T.filter(t=>picked.has(t.id));
+  const selBytes=sel.reduce((n,t)=>n+t.bytes,0), deepSel=sel.some(t=>t.deep);
+  const row=t=>`<div class="row2"><span class="tg ${picked.has(t.id)?'on':''}" onclick="pick('${t.id}')" role="checkbox" aria-checked="${picked.has(t.id)}">${picked.has(t.id)?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#06101f" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>':''}</span>
+    <span class="rt"><div class="r1" title="${esc(t.shown.join('\n'))}">${esc(t.label)}</div><div class="r2 wrap">Rebuilds: ${esc(t.rebuilds)}</div></span><span class="rs">${size(t.bytes)}</span></div>`;
+  const normal=T.filter(t=>!t.deep), deep=T.filter(t=>t.deep);
+  $('#dbody').innerHTML=`<div class="lbl">Meters</div><div id="dmeters"></div>
+    <div class="lbl">Orphans<span class="ltail">${orphans.length||''}</span></div>
+    ${o||'<div class="dempty">No orphaned dev processes.</div>'}
+    <div class="lbl">Cleanup<span class="ltail">${cleanup&&cleanup.scannedAt?'scanned '+new Date(cleanup.scannedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}</span><button class="lbtn" onclick="loadCleanup(true)">${cleanup&&cleanup.scanning?'Scanning…':'Rescan'}</button></div>
+    ${cleanup==null||cleanup.scanning&&!T.length?'<div class="dempty">Scanning build folders…</div>':cleanup.error?`<div class="dempty">${esc(cleanup.error)}</div>`:''}
+    ${normal.map(row).join('')}
+    ${deep.length?`<div class="dnote" style="margin-top:14px">Deep clean, only when the disk is nearly full:</div>${deep.map(row).join('')}`:''}
+    ${T.length?`<div class="dfoot"><span class="sum">${sel.length?`${sel.length} selected, ${size(selBytes)}`:'Pick what can go.'}</span>
+      <button class="dbtn ${armed==='clean'?'arm':''}" ${sel.length?'':'disabled'} onclick="doClean()">${armed==='clean'?`Sure? Delete ${size(selBytes)}`:'Clean'}</button></div>
+      <div class="dnote">Only rebuildable things are listed: build output git ignores, render leftovers, caches. Each is checked again right before it is deleted.${deepSel?' The deep clean is selected: Gradle downloads its dependencies again on the next build.':''}</div>`:''}`;
+  renderDrawerMeters();
+}
+function pick(id){ picked.has(id)?picked.delete(id):picked.add(id); if(armed==='clean') armed=null; renderDrawer(); }
+async function killOrphan(pid,startedAt){
+  if(armed!=='k'+pid) return arm('k'+pid);
+  armed=null;
+  try{ await api('/api/guard/orphans/kill',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pid,startedAt})}); toast('stopped '+pid); }
+  catch(e){ toast(e.message); }
+  setTimeout(loadOrphans,1200);
+}
+async function doClean(){
+  if(armed!=='clean') return arm('clean');
+  armed=null;
+  const ids=[...picked], deep=(cleanup.targets||[]).some(t=>t.deep&&picked.has(t.id));
+  try{ const r=await api('/api/guard/cleanup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ids,deep})});
+    toast(`freed ${size(r.freedBytes)||'0 KB'}${r.errors.length?`, ${r.errors.length} skipped`:''}`);
+    if(r.errors.length) console.warn('cleanup skipped',r.errors);
+    picked.clear(); loadCleanup(true);
+  }catch(e){ toast(e.message); }
+}
+refresh();setInterval(refresh,4000);
+</script>

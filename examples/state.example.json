@@ -1,0 +1,105 @@
+{
+  "scanRoots": [
+    "~",
+    "~/code"
+  ],
+  "repos": {
+    "perdix": {
+      "name": "Perdix",
+      "slug": "zlexo/perdix",
+      "path": "~/code/perdix",
+      "project": "perdix"
+    },
+    "web-app": {
+      "name": "Web app",
+      "slug": "you/web-app",
+      "path": "~/code/web-app",
+      "project": "web-app"
+    }
+  },
+  "reviews": {
+    "repos": {
+      "perdix": {
+        "rules": [
+          "CONTRIBUTING.md",
+          "CLAUDE.md",
+          "docs/design/0000-foundations.md"
+        ],
+        "design": "rfc",
+        "risk": [
+          "app/src/world_loop*",
+          "engine/world/src/*stream*",
+          "engine/render/src/*arena*",
+          "engine/core/src/job*"
+        ]
+      },
+      "web-app": {
+        "rules": [
+          "CONTRIBUTING.md",
+          "README.md"
+        ],
+        "design": "issues",
+        "risk": [
+          "packages/db/**"
+        ]
+      }
+    }
+  },
+  "ci": {
+    "repos": {
+      "perdix": {
+        "timeoutMin": 60,
+        "jobs": [
+          {
+            "name": "ci-local",
+            "cmd": [
+              "scripts/ci-local.sh"
+            ],
+            "env": {
+              "JOBS": "3"
+            },
+            "parse": "ci-local"
+          }
+        ]
+      },
+      "web-app": {
+        "timeoutMin": 30,
+        "jobs": [
+          {
+            "name": "npm ci",
+            "cmd": [
+              "npm",
+              "ci"
+            ]
+          },
+          {
+            "name": "build",
+            "cmd": [
+              "npm",
+              "run",
+              "build"
+            ]
+          },
+          {
+            "name": "test",
+            "cmd": [
+              "npm",
+              "test"
+            ],
+            "parse": "vitest"
+          }
+        ]
+      }
+    }
+  },
+  "claude": {
+    "caps": {
+      "reviews": 40,
+      "modlab": 10,
+      "total": 90
+    }
+  },
+  "merge": {
+    "authorEmail": "you@example.com"
+  }
+}

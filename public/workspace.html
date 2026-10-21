@@ -1,0 +1,441 @@
+<!doctype html><meta charset="utf-8"><title>Workspace</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;
+    --bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface2:#161d27;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#6d8bff;--live:#34d399;--ext:#fbbf24;--danger:#f87171;--pc:#6d8bff}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(720px 420px at 12% -10%, color-mix(in srgb, var(--pc) 12%, transparent), transparent 70%)}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 30px 90px}
+  a.back{color:var(--faint);text-decoration:none;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;margin-bottom:16px}
+  a.back:hover{color:var(--dim)}
+
+  .phead{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+  .picon{width:56px;height:56px;flex:none;overflow:hidden;border:1px solid var(--line2)}
+  .picon svg{width:100%;height:100%;display:block}
+  .pname{font-size:24px;font-weight:720;letter-spacing:-.02em;margin:0}
+  .pdesc{color:var(--dim);font-size:13px;margin:3px 0 0}
+  .statusline{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 26px}
+  .schip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;background:var(--surface);
+    border:1px solid var(--line);font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .schip .d{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .schip .d.on{background:var(--live);box-shadow:0 0 8px #34d39988}
+  .schip .d.warn{background:var(--ext)}.schip .d.bad{background:var(--danger)}
+  .schip b{color:var(--text);font-weight:640}
+
+  .cols{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start}
+  @media(max-width:900px){.cols{grid-template-columns:1fr}}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;
+    margin:26px 0 13px;display:flex;align-items:center;gap:10px}
+  .lbl:first-child{margin-top:0}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px}
+  .panel+.panel{margin-top:12px}
+
+  button{border:0;padding:9px 15px;font:600 12.5px inherit;cursor:pointer;background:var(--surface3);
+    color:var(--text);transition:.14s;font-family:inherit}
+  button:hover{background:#242f3d}
+  button.primary{background:var(--pc);color:#fff}button.primary:hover{filter:brightness(1.1)}
+  button.stop{background:#2c1c1e;color:#f2a9a9}button.stop:hover{background:#3a2224}
+  button.g{background:transparent;border:1px solid var(--line2);color:var(--dim);padding:7px 12px}
+  button.g:hover{color:var(--text);border-color:var(--faint)}
+  button:disabled{opacity:.4;cursor:default}
+  .bigbtns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .bigbtns button{padding:12px 20px;font-size:13.5px}
+
+  .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+  .tool{background:var(--surface);border:1px solid var(--line);padding:13px 14px;transition:.15s}
+  .tool:hover{border-color:var(--line2)}
+  /* no running-border on tool cards: the status dot is enough; servers show live state in their own section */
+  .tool .tn{font-weight:640;font-size:13.5px;display:flex;align-items:center;gap:8px}
+  .tool .tn .d{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .tool .tn .d.on{background:var(--live);box-shadow:0 0 7px #34d39988}
+  .tool .tn .d.warn{background:var(--ext)}
+  .tool .td{color:var(--dim);font-size:11.5px;margin:6px 0 10px;line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tool .trow{display:flex;gap:6px}
+
+  /* version strip */
+  .vrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .vrow:last-child{border-bottom:0}
+  .vrow .vk{color:var(--faint);width:78px;text-transform:uppercase;font-size:10.5px;letter-spacing:.08em}
+  .vrow .vv{font-family:ui-monospace,Menlo,monospace;color:var(--text)}
+  .vrow .age{color:var(--dim);font-size:11px;margin-left:auto}
+  .stalewarn{color:#e6c65a;background:#2a2410;border:1px solid #6f5c1f;padding:2px 8px;font-size:10.5px;font-weight:600}
+
+  /* git */
+  .repo{padding:12px 0;border-bottom:1px solid var(--line)}.repo:last-child{border-bottom:0}
+  .repo .rh{display:flex;align-items:center;gap:9px;font-size:13px}
+  .repo .rn{font-weight:640}
+  .repo .branch{font-family:ui-monospace,Menlo,monospace;color:var(--dim);font-size:11.5px}
+  .repo .tag{font-size:10.5px;padding:2px 8px;border:1px solid var(--line2);color:var(--faint)}
+  .repo .tag.dirty{color:#f2a9a9;border-color:#5a2a2e}
+  .repo .tag.ahead{color:#a9c0ff;border-color:#2a3a63}
+  .repo .tag.clean{color:#4fe0a6;border-color:#1f6f52}
+  .repo .rbtns{display:flex;gap:6px;margin:9px 0 6px}
+  .repo .log{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--faint);line-height:1.7}
+  .repo .log .h{color:var(--dim)}
+
+  /* tasks */
+  .tasks{display:flex;flex-direction:column;gap:2px}
+  .task{display:flex;align-items:center;gap:9px;padding:7px 4px;font-size:12.5px;border-bottom:1px solid #131a24}
+  .task:hover{background:#0f151d}
+  .task .cb{width:15px;height:15px;flex:none;border:1.5px solid var(--line2);cursor:pointer;display:grid;place-items:center}
+  .task.done .cb{background:var(--live);border-color:var(--live)}
+  .task.done .tx{color:var(--faint);text-decoration:line-through}
+  .task .tx{flex:1;cursor:default}
+  .task .del{color:var(--faint);cursor:pointer;opacity:0;font-size:15px}
+  .task:hover .del{opacity:1}
+  .task .del:hover{color:var(--danger)}
+  .addtask{display:flex;gap:7px;margin-top:9px}
+  .addtask input{flex:1;background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:8px 10px;font:12.5px inherit}
+  .addtask input:focus{outline:0;border-color:var(--pc)}
+  .empty{color:var(--faint);font-size:12px;padding:14px 0;text-align:center}
+  .headact{margin-left:auto;align-self:center;display:flex;gap:8px;align-items:center}
+  .pht{min-width:0}
+  .vbtn{padding:5px 11px;font-size:11.5px}
+  .shiprow{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .shiphint{font-size:11px;color:var(--faint);flex:1;line-height:1.4}
+  /* servers */
+  .servers{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+  .srv{background:var(--surface);border:1px solid var(--line);padding:13px 14px}
+  .srv.on{border-color:#1f6f52}
+  .srv .srvh{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:640}
+  .srv .srvh .d{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .srv .srvh .d.on{background:var(--live);box-shadow:0 0 7px #34d39988}.srv .srvh .d.warn{background:var(--ext)}
+  .srv .sstat{margin-left:auto;font-size:10.5px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
+  .srv .sdesc{color:var(--dim);font-size:11.5px;margin:6px 0 4px;line-height:1.45}
+  .srv .srow{display:flex;gap:6px;margin-top:9px}
+  /* site banner */
+  .sitebanner{display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;
+    background:linear-gradient(100deg,color-mix(in srgb,var(--pc) 13%,var(--surface)),var(--surface));
+    border:1px solid var(--line2);transition:.16s}
+  .sitebanner:hover{border-color:var(--pc);transform:translateY(-1px)}
+  .sitebanner .sbl{display:flex;align-items:center;gap:12px}
+  .sitebanner .sbdot{width:9px;height:9px;border-radius:50%;background:var(--pc);box-shadow:0 0 10px var(--pc)}
+  .sitebanner .sbt{font-weight:640;font-size:14px}
+  .sitebanner .sbu{font-size:12px;color:var(--dim);font-family:ui-monospace,Menlo,monospace}
+  .sitebanner .sbcta{margin-left:auto;padding-left:12px;white-space:nowrap;color:var(--pc);font-weight:600;font-size:13px}
+  .sitebanner .sbl{min-width:0}
+  .sitebanner .sbu{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sitebanner + .sitebanner{margin-top:9px}
+  .sitebanner.dim{opacity:.62}
+  .sitebanner.dim .sbdot{background:var(--faint);box-shadow:none}
+  .sitebanner .sbstate{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--dim);border:1px solid var(--line2);padding:1px 6px;margin-left:7px;vertical-align:1px}
+  .sitebanner .sbstate.live{color:var(--pc);border-color:var(--pc)}
+  .sitebanner .sbstate.off{color:var(--faint)}
+  /* commit dialog */
+  .modal{position:fixed;inset:0;background:#05070aee;z-index:50;display:none;align-items:flex-start;justify-content:center;padding-top:8vh}
+  .modal.show{display:flex}
+  .modalbox{width:min(560px,92vw);background:var(--surface);border:1px solid var(--line2);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 30px 80px -20px #000e}
+  .modalh{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:640;display:flex;align-items:center;gap:8px}
+  .modalh .x{margin-left:auto;cursor:pointer;color:var(--faint);font-size:16px}.modalh .x:hover{color:var(--text)}
+  .cmbar{padding:9px 18px 2px;display:flex;justify-content:space-between;align-items:center}
+  .cmbar .lb{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em}
+  .selall{font-size:11.5px;color:var(--dim);cursor:pointer;border:1px solid var(--line2);padding:3px 9px}
+  .selall:hover{color:var(--text);border-color:var(--faint)}
+  .cfiles{overflow:auto;padding:6px 10px;max-height:36vh}
+  .cfile{display:flex;align-items:center;gap:9px;padding:6px 8px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace;cursor:pointer}
+  .cfile:hover{background:#0f151d}
+  .cfile input{width:15px;height:15px;accent-color:var(--pc)}
+  .cfile .k{font-size:9px;text-transform:uppercase;letter-spacing:.04em;width:56px;flex:none}
+  .cfile .k.added{color:#4fe0a6}.cfile .k.modified{color:#a9c0ff}.cfile .k.deleted{color:#f2a9a9}
+  .cfile .p{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim)}
+  .cmsg{padding:12px 18px;border-top:1px solid var(--line)}
+  .cmsg textarea{width:100%;min-height:54px;resize:vertical;background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:9px 11px;font:13px inherit;line-height:1.5}
+  .cmsg textarea:focus{outline:0;border-color:var(--pc)}
+  .modalf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;
+    background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="wrap" id="wrap"><div class="empty">Loading…</div></div>
+<div class="modal" id="commitModal">
+  <div class="modalbox">
+    <div class="modalh"><span id="cm-repo">Commit</span><span class="x" onclick="closeCommit()">✕</span></div>
+    <div class="cmbar"><span class="lb" id="cm-count">changes</span><span class="selall" onclick="toggleAll()">all / none</span></div>
+    <div class="cfiles" id="cm-files"></div>
+    <div class="cmsg"><textarea id="cm-msg" placeholder="commit message" spellcheck="false"></textarea></div>
+    <div class="modalf">
+      <button class="g" onclick="closeCommit()">Cancel</button>
+      <button class="g" onclick="doCommit(false)">Commit</button>
+      <button class="primary" onclick="doCommit(true)">Commit &amp; Push</button>
+    </div>
+  </div>
+</div>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const invoke=window.__TAURI__?.core?.invoke;
+const PID=new URLSearchParams(location.search).get('p');
+let P=null, TOOLS=[], TASKS=[], ARCHIVED=new Set(), BENCH=false, showArchive=false;
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+const goDeck=()=>{ if(invoke) invoke('activate',{target:'deck'}); else location.href='/'; };
+
+let booted=false;
+async function load(){
+  const [{project},{tools}]=await Promise.all([api('/api/projects/'+PID),api('/api/tools')]);
+  P=project; TOOLS=tools.filter(t=>project.tools.includes(t.id));
+  try{ TASKS=(await api('/api/tasks')).tasks; }catch{ TASKS=[]; }
+  // Focus folds tools nobody launched for 30 days onto an Archive shelf;
+  // Mod Lab adds a button when this project has a test bench.
+  try{ const f=await api('/api/focus'); ARCHIVED=new Set(f.enabled&&!f.showAll?f.archive.tools:[]); }catch{ ARCHIVED=new Set(); }
+  try{ BENCH=(await api('/api/modlab')).benches.some(b=>b.project===PID); }catch{ BENCH=false; }
+  document.documentElement.style.setProperty('--pc',P.color);
+  // full auto-boot: on first open, start any server that opts in (autoServer)
+  if(!booted){ booted=true;
+    (P.servers||[]).filter(s=>s.autoServer&&s.status==='stopped').forEach(s=>serverAct(s.id,'start'));
+  }
+  render();
+}
+
+function statChip(spec,key){
+  if(!spec) return '';
+  const cls=spec.status==='running'?'on':spec.status==='external'?'warn':'';
+  return `<span class="schip"><span class="d ${cls}"></span>${spec.label||key}: <b>${spec.status}</b></span>`;
+}
+function ver(a){
+  if(!a) return '';
+  const rows=[];
+  if(a.jar!==undefined) rows.push(vrow('jar',a.jar));
+  if(a.mrpack!==undefined) rows.push(vrow('mrpack',a.mrpack));
+  if(a.deployed!==undefined) rows.push(vrow('deployed',a.deployed));
+  if(!rows.length && !P.delivery) return '';
+  const ship=P.delivery?`<div class="shiprow"><span class="shiphint">builds fresh → stages the jar → tags → logs to Client Deliveries Log</span><button class="primary" onclick="ship(this)">Ship a delivery →</button></div>`:'';
+  return `<div class="lbl">Version / Delivery</div><div class="panel">${rows.join('')}${ship}</div>`;
+}
+function vrow(k,f){
+  const canBuild=k==='jar';
+  if(!f) return `<div class="vrow"><span class="vk">${k}</span><span class="vv" style="color:var(--faint)">none built</span>
+    ${canBuild?`<button class="g vbtn" style="margin-left:auto" onclick="generate()">Generate</button>`:''}</div>`;
+  const stale=f.stale&&f.stale.sourceNewer;
+  const path=String(f.path).replace(/'/g,"&#39;");
+  return `<div class="vrow"><span class="vk">${k}</span><span class="vv">${f.name}</span>
+    ${stale?`<span class="stalewarn">⚠ ${f.stale.days}d stale</span>`:''}
+    <span class="age">${f.ageDays===0?'today':f.ageDays+'d ago'}</span>
+    <button class="g vbtn" onclick="openPath('${path}')" title="reveal in Finder">Finder</button>
+    ${canBuild&&stale?`<button class="g vbtn" onclick="generate()" title="rebuild the jar">Rebuild</button>`:''}</div>`;
+}
+const openPath=p=>api('/api/open',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({path:p})}).then(()=>toast('revealed in Finder')).catch(e=>toast(e.message));
+
+function toolCard(t){
+  const open=invoke?false:t.status==='running'; // tab-state tracked by shell; simplified here
+  const running=t.status==='running'||t.status==='external';
+  const cls=t.status==='running'?'on':t.status==='external'?'warn':'';
+  return `<div class="tool ${running?'on':''}">
+    <div class="tn"><span class="d ${cls}"></span>${t.name}</div>
+    <div class="td">${t.description||''}</div>
+    <div class="trow">
+      <button class="primary" onclick="openTool('${t.id}')">${t.url?'Open':'Run'}</button>
+      ${running?`<button class="g" onclick="stopTool('${t.id}')">Stop</button>`:''}
+    </div></div>`;
+}
+
+function repoCard(g){
+  if(!g.exists) return '';
+  const clean=!g.dirty&&!g.ahead;
+  const tags=[
+    g.dirty?`<span class="tag dirty">${g.dirty} uncommitted</span>`:'',
+    g.ahead?`<span class="tag ahead">↑${g.ahead}</span>`:'',
+    g.behind?`<span class="tag">↓${g.behind}</span>`:'',
+    clean&&g.hasRemote?`<span class="tag clean">clean</span>`:'',
+  ].filter(Boolean).join('');
+  const log=(g.log||[]).map(c=>`<div><span class="h">${c.hash}</span> ${esc(c.subject)} <span style="color:#3a4552">· ${c.when}</span></div>`).join('');
+  return `<div class="repo">
+    <div class="rh"><span class="rn">${g.name}</span><span class="branch">${g.branch}</span>${tags}</div>
+    <div class="rbtns">
+      ${g.dirty?`<button class="g" onclick="openCommit('${esc(g.path)}')">Commit…</button>`:''}
+      ${g.hasRemote?`<button class="g" onclick="gitAct('${esc(g.path)}','push')" ${g.ahead?'':'disabled'}>Push${g.ahead?' ('+g.ahead+')':''}</button>`
+        :`<button class="primary" onclick="gitAct('${esc(g.path)}','create-remote')">Create GitHub repo</button>`}
+    </div>
+    <div class="log">${log||'<span style="color:#3a4552">no commits</span>'}</div>
+  </div>`;
+}
+
+function taskRow(t,i){
+  return `<div class="task ${t.done?'done':''}">
+    <span class="cb" onclick="toggleTask(${i})">${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#04140b" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>':''}</span>
+    <span class="tx">${esc(t.text)}${t.due?` <span style="color:var(--ext);font-size:11px">!${t.due}</span>`:''}</span>
+    <span class="del" onclick="delTask(${i})">×</span>
+  </div>`;
+}
+
+function serverCard(s){
+  const running=s.status==='running'||s.status==='external';
+  const cls=s.status==='running'?'on':s.status==='external'?'warn':'';
+  return `<div class="srv ${running?'on':''}">
+    <div class="srvh">
+      <span class="d ${cls}"></span><span class="sn">${s.label||s.id}</span>
+      <span class="sstat">${s.status}${s.port?` · :${s.port}`:''}</span>
+    </div>
+    ${s.description?`<div class="sdesc">${s.description}</div>`:''}
+    <div class="srow">
+      <button class="primary" onclick="openServerPanel('${s.id}','${esc(s.label||s.id)}')">Open panel</button>
+      ${running?`<button class="g" onclick="serverAct('${s.id}','stop')">Stop</button>`
+        :`<button class="g" onclick="serverAct('${s.id}','start')">Start</button>`}
+    </div></div>`;
+}
+// A project can have more than one site: Modplex has the marketplace, the
+// engine's docs site and a landing prototype. `site` (singular) still works and
+// every other project still uses it; `sites` is the list form.
+function siteBanner(){
+  const list = P.sites && P.sites.length ? P.sites : (P.site ? [P.site] : []);
+  if(!list.length) return '';
+  return list.map((s,i)=>{
+    const state = s.state ? `<span class="sbstate ${s.stateKind||''}">${s.state}</span>` : '';
+    return `<div class="sitebanner${s.stateKind==='off'?' dim':''}" onclick="openSite(${i})">
+      <div class="sbl"><div class="sbdot"></div><div>
+        <div class="sbt">${s.name||(P.name+' site')} ${state}</div>
+        <div class="sbu">${s.label||s.url}</div>
+      </div></div>
+      <div class="sbcta">${s.cta||'Open site'} ↗</div></div>`;
+  }).join('');
+}
+
+function render(){
+  const projTasks=TASKS.map((t,i)=>({t,i})).filter(x=>!x.t.project||x.t.project===P.id||x.t.project===P.name.replace(/\s/g,''));
+  const servers=P.servers||[];
+  $('#wrap').innerHTML=`
+    <a class="back" onclick="goDeck()" style="cursor:pointer">← All projects</a>
+    <div class="phead">
+      <div class="picon">${P.iconSvg||''}</div>
+      <div class="pht"><h1 class="pname">${P.name}</h1><p class="pdesc">${P.description}</p></div>
+      ${P.devClientSpec||BENCH?`<div class="headact">${BENCH?`<button class="g" onclick="openModLab()" title="Test bench: build, server, scenarios">Mod Lab</button>`:''}${P.devClientSpec?bigBtn(P.devClient,P.devClientSpec):''}</div>`:''}
+    </div>
+    <div class="cols">
+      <div>
+        ${(() => { const b = siteBanner(); return b ? `<div class="lbl">Sites</div>${b}` : ''; })()}
+        ${servers.length?`<div class="lbl">Servers</div><div class="servers">${servers.map(serverCard).join('')}</div>`:''}
+        <div class="lbl">Tools</div>
+        ${(() => {
+          const live=t=>t.status==='running'||t.status==='external';
+          const quiet=TOOLS.filter(t=>ARCHIVED.has(t.id)&&!live(t)), shown=TOOLS.filter(t=>!quiet.includes(t));
+          const grid=`<div class="tools">${shown.map(toolCard).join('')||(quiet.length?'':'<div class="empty">No tools for this project yet</div>')}</div>`;
+          if(!quiet.length) return grid;
+          return grid+`<div class="lbl" style="margin-top:18px">Archive · ${quiet.length}<span style="flex:none;order:3"></span><button class="g" style="order:4;padding:3px 10px;font-size:11px" onclick="showArchive=!showArchive;render()">${showArchive?'Hide':'Show'}</button></div>`
+            +(showArchive?`<div class="tools">${quiet.map(toolCard).join('')}</div>`:`<div class="empty" style="text-align:left;padding:2px 0">${quiet.map(t=>esc(t.name)).join(', ')}: not launched for 30 days.</div>`);
+        })()}
+        ${ver(P.artifacts)}
+      </div>
+      <div>
+        <div class="lbl">Tasks</div>
+        <div class="panel">
+          <div class="tasks">${projTasks.length?projTasks.map(x=>taskRow(x.t,x.i)).join(''):'<div class="empty">No tasks yet. Add one below.</div>'}</div>
+          <div class="addtask">
+            <input id="newtask" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTask()">
+            <button class="primary" onclick="addTask()">Add</button>
+          </div>
+        </div>
+        ${(P.git||[]).some(g=>g.exists)?`<div class="lbl">Git</div><div class="panel">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="g" onclick="recap()" title="diff this project's repos since ~2h → append a summary to today's daily">Recap → daily</button></div>
+          ${P.git.map(repoCard).join('')}</div>`:''}
+      </div>
+    </div>`;
+}
+function bigBtn(st,spec){
+  const running=st&&(st.status==='running'||st.status==='external');
+  const label=spec.label||'Run Client';
+  return running
+    ? `<button class="stop" onclick="devClient('stop')">◼ Stop ${label}</button>`
+    : `<button class="primary" onclick="devClient('start')">▶ ${label}</button>`;
+}
+async function devClient(action){
+  try{ toast(action==='start'?'launching client…':'stopping…'); await api(`/api/projects/${PID}/dev-client/${action}`,{method:'POST'}); setTimeout(load,700); }
+  catch(e){ toast(e.message); }
+}
+async function serverAct(sid,action){
+  try{ toast(action+'ing…'); await api(`/api/projects/${PID}/servers/${sid}/${action}`,{method:'POST'}); setTimeout(load,700); }
+  catch(e){ toast(e.message); }
+}
+function openServerPanel(sid,label){
+  const url=location.origin+'/server-panel.html?p='+encodeURIComponent(PID)+'&s='+encodeURIComponent(sid);
+  if(invoke){ try{ invoke('open_tool',{id:'srv:'+PID+':'+sid,name:label+' · server',url}); }catch(e){ toast('open failed'); } }
+  else window.open(url,'_blank');
+}
+async function openSite(i){
+  try{
+    const list = P.sites && P.sites.length ? P.sites : (P.site ? [P.site] : []);
+    const s = list[i||0]; if(!s) return;
+    let url=s.url;
+    if(s.dev){ toast('starting the site…'); const j=await api(`/api/projects/${PID}/site/start/${i||0}`,{method:'POST'}); url=j.url||url; }
+    if(invoke){ try{ await invoke('open_tool',{id:'site:'+PID+':'+(i||0),name:s.name||(P.name+' site'),url}); }catch(e){ toast('open failed'); } } else window.open(url,'_blank'); }
+  catch(e){ toast(e.message); }
+}
+async function generate(){
+  try{ toast('building… (check the jar in a moment)'); await api(`/api/projects/${PID}/build`,{method:'POST'}); setTimeout(load,3000); }
+  catch(e){ toast(e.message); }
+}
+async function openModLab(){
+  const url=location.origin+'/modlab.html?p='+encodeURIComponent(PID);
+  if(invoke){ try{ await invoke('open_tool',{id:'v2-modlab',name:'Mod Lab',url}); }catch(e){ toast('open failed: '+e); } }
+  else location.href=url;
+}
+async function openTool(id){
+  const t=TOOLS.find(x=>x.id===id); if(!t) return;
+  if(!t.url){ try{await api(`/api/tools/${id}/start`,{method:'POST'});toast('started');setTimeout(load,600);}catch(e){toast(e.message);} return; }
+  if(t.status!=='running'&&t.status!=='external'){
+    try{ await api(`/api/tools/${id}/start`,{method:'POST'}); await new Promise(r=>setTimeout(r,1000)); }catch(e){ return toast('start failed: '+e.message); }
+  }
+  if(invoke){ try{ await invoke('open_tool',{id:t.id,name:t.name,url:t.url}); }catch(e){ toast('open failed: '+e); } }
+  else window.open(t.url,'_blank');
+  setTimeout(load,500);
+}
+async function stopTool(id){ try{ await api(`/api/tools/${id}/stop`,{method:'POST'}); setTimeout(load,500); }catch(e){ toast(e.message); } }
+async function ship(btn){
+  if(btn && btn.dataset.armed!=='1'){ btn.dataset.armed='1'; btn.textContent='Confirm ship ✓'; btn.classList.add('stop');
+    setTimeout(()=>{ if(btn){ btn.dataset.armed='0'; btn.textContent='Ship a delivery →'; btn.classList.remove('stop'); } },4000); return; }
+  try{ toast('shipping… building + staging'); const j=await api(`/api/projects/${PID}/deliver`,{method:'POST'});
+    toast('shipped ✓ · '+(j.notes||[]).join(' · ')); setTimeout(load,1500);
+  }catch(e){ toast('ship failed: '+e.message); }
+}
+async function recap(){
+  try{ toast('writing recap…'); const j=await api('/api/recap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project:PID,since:'2 hours ago'})});
+    toast(j.empty?'nothing changed to recap':'recap → today\'s daily ✓'); }
+  catch(e){ toast('recap failed: '+e.message); }
+}
+// ---- commit dialog (pick files + auto-suggested message) ----
+let cmRepo=null, cmFiles=[];
+async function openCommit(repo){
+  cmRepo=repo;
+  try{ const j=await api(`/api/projects/${PID}/git/status?repo=`+encodeURIComponent(repo));
+    cmFiles=j.files||[];
+    $('#cm-repo').textContent='Commit to '+repo.split('/').pop();
+    $('#cm-count').textContent=cmFiles.length+' changed file'+(cmFiles.length===1?'':'s');
+    $('#cm-files').innerHTML=cmFiles.map((f,i)=>`<label class="cfile"><input type="checkbox" checked data-i="${i}"><span class="k ${f.kind}">${f.kind}</span><span class="p" title="${esc(f.path)}">${esc(f.path)}</span></label>`).join('')||'<div class="empty">nothing to commit</div>';
+    $('#cm-msg').value=j.suggested||'';
+    $('#commitModal').classList.add('show'); setTimeout(()=>$('#cm-msg').focus(),40);
+  }catch(e){ toast(e.message); }
+}
+function closeCommit(){ $('#commitModal').classList.remove('show'); }
+function toggleAll(){ const cbs=[...document.querySelectorAll('#cm-files input')]; const on=cbs.some(c=>!c.checked); cbs.forEach(c=>c.checked=on); }
+async function doCommit(push){
+  const sel=[...document.querySelectorAll('#cm-files input:checked')].map(c=>cmFiles[+c.dataset.i].path);
+  const msg=($('#cm-msg').value||'').trim();
+  if(!sel.length) return toast('select at least one file');
+  if(!msg) return toast('write a commit message');
+  try{ toast(push?'committing + pushing…':'committing…');
+    await api(`/api/projects/${PID}/git/commit`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({repo:cmRepo,message:msg,files:sel,push})});
+    closeCommit(); toast(push?'committed + pushed ✓':'committed ✓'); setTimeout(load,700);
+  }catch(e){ toast('commit failed: '+e.message); }
+}
+async function gitAct(repo,action){
+  try{ toast(action+'…'); await api(`/api/projects/${PID}/git/${action}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({repo})}); toast(action+' ✓'); setTimeout(load,700); }
+  catch(e){ toast(action+' failed: '+e.message); }
+}
+async function addTask(){
+  const inp=$('#newtask'); const text=(inp.value||'').trim(); if(!text) return;
+  try{ const j=await api('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'add',text,project:P.id})}); TASKS=j.tasks; render(); }catch(e){ toast(e.message); }
+}
+async function toggleTask(i){ try{ const j=await api('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'toggle',index:i})}); TASKS=j.tasks; render(); }catch(e){toast(e.message);} }
+async function delTask(i){ try{ const j=await api('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'delete',index:i})}); TASKS=j.tasks; render(); }catch(e){toast(e.message);} }
+
+load().catch(e=>{$('#wrap').innerHTML=`<div class="empty">Failed to load project "${PID}": ${e.message}</div>`;});
+setInterval(()=>{ if(P) load().catch(()=>{}); },5000);
+</script>

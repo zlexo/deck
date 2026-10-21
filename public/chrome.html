@@ -1,0 +1,240 @@
+<!doctype html><meta charset="utf-8"><title>Deck chrome</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;
+    --text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#6d8bff;--live:#34d399;--ext:#fbbf24;--danger:#f87171}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{font:13px/1 -apple-system,system-ui,"SF Pro Text",sans-serif;color:var(--text);
+    background:linear-gradient(180deg,#0f141b,#0b0e13);
+    border-bottom:1px solid #212b38;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
+  /* the whole bar drags the window; interactive children opt out below */
+  #bar{height:100%;display:flex;align-items:center;gap:6px;
+    padding:0 10px 0 82px /* leave room for the macOS traffic lights */}
+  #tabs{display:flex;align-items:center;gap:5px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;height:100%}
+  #tabs::-webkit-scrollbar{height:0}
+
+  .tab{-webkit-app-region:no-drag;position:relative;display:flex;align-items:center;gap:8px;
+    height:32px;padding:0 11px;border-radius:3px;cursor:default;white-space:nowrap;flex:none;max-width:220px;
+    color:var(--dim);background:transparent;border:1px solid transparent;transition:.14s}
+  .tab:hover{background:#151d27;color:var(--text)}
+  .tab.active{background:linear-gradient(180deg,#1c2735,#151d28);border-color:#2a3a52;color:#fff;
+    box-shadow:0 0 0 1px #6d8bff22, inset 0 1px 0 #ffffff0d}
+  .tab.active::after{content:"";position:absolute;left:11px;right:11px;bottom:-1px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,var(--accent),#8b6dff)}
+  .tab .nm{overflow:hidden;text-overflow:ellipsis;font-weight:560;font-size:12.5px}
+
+  /* home (Deck) tab */
+  .home{gap:9px;padding-left:9px}
+  .home .glyph{width:17px;height:17px;flex:none;display:grid;place-items:center}
+  .home .glyph svg{width:17px;height:17px}
+
+  /* status dot on tool tabs */
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+  .dot.running{background:var(--live);box-shadow:0 0 7px #34d399bb}
+  .dot.external{background:var(--ext)}
+
+  /* close button */
+  .x{-webkit-app-region:no-drag;width:18px;height:18px;flex:none;display:grid;place-items:center;border-radius:3px;
+    color:var(--faint);margin-right:-4px;transition:.12s;opacity:.7}
+  .tab:hover .x{opacity:1}
+  .x:hover{background:#33404f;color:var(--text)}
+  .x svg{width:11px;height:11px}
+
+  .rightcap{-webkit-app-region:no-drag;display:flex;align-items:center;gap:8px;flex:none;
+    color:var(--faint);font-size:11px;padding-left:6px;position:relative}
+  .rightcap .live{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:4px;
+    background:#12171f;border:1px solid #212b38}
+  .rightcap .live .d{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  .rightcap .live.on .d{background:var(--live);box-shadow:0 0 6px #34d399}
+  .rightcap b{color:var(--text);font-weight:640}
+
+  /* focus timer — the always-visible leash */
+  .timer{-webkit-app-region:no-drag;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 11px;
+    border-radius:4px;background:#12171f;border:1px solid #212b38;transition:.18s}
+  .timer.run{background:linear-gradient(180deg,#13251d,#0f1b16);border-color:#1f6f52;box-shadow:0 0 0 1px #34d39926}
+  .timer.run.brk{background:linear-gradient(180deg,#241e12,#1b160d);border-color:#6f5c1f;box-shadow:0 0 0 1px #fbbf2426}
+  .timer .ph{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+  .timer.run .ph{color:var(--live)}.timer.run.brk .ph{color:var(--ext)}
+  .timer .clock{font:640 14px ui-monospace,Menlo,monospace;color:var(--text);font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
+  .timer.run .clock{color:#7fe9bb}.timer.run.brk .clock{color:#e6c65a}
+  .timer .proj{font-size:10.5px;color:var(--faint);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tbtn{-webkit-app-region:no-drag;width:24px;height:24px;display:grid;place-items:center;border-radius:3px;
+    color:var(--dim);cursor:pointer;transition:.12s}
+  .tbtn:hover{background:#242f3d;color:var(--text)}
+  .tbtn svg{width:12px;height:12px}
+  .reloadbtn{width:30px;height:30px;border:1px solid #212b38;background:#12171f;margin-right:2px}
+  .reloadbtn:hover{background:#1b2430;color:var(--text)}
+  .reloadbtn svg{width:14px;height:14px}
+  .reloadbtn.spin svg{animation:rspin .7s linear}
+  @keyframes rspin{to{transform:rotate(360deg)}}
+  .tmenu{position:absolute;top:40px;right:0;background:#12171f;border:1px solid #2c3a4b;border-radius:5px;
+    padding:6px;display:none;flex-direction:column;gap:2px;min-width:150px;z-index:20;box-shadow:0 14px 34px -12px #000c}
+  .tmenu.show{display:flex}
+  .tmenu .mi{padding:7px 10px;border-radius:3px;color:var(--dim);cursor:pointer;font-size:12px;display:flex;justify-content:space-between;gap:10px}
+  .tmenu .mi:hover{background:#1b2430;color:var(--text)}
+  .tmenu .mi.on{color:#bcccff}.tmenu .mi .k{color:var(--faint);font-size:10.5px}
+  .tmenu .sep{height:1px;background:#212b38;margin:4px 0}
+</style>
+<div id="bar">
+  <div id="tabs"></div>
+  <div class="rightcap">
+    <span class="tbtn reloadbtn" id="reload" title="reload the Deck (pick up code / manifest changes — no relaunch)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span>
+    <div class="timer" id="timer">
+      <span class="ph" id="t-ph">Focus</span>
+      <span class="clock" id="t-clock">25:00</span>
+      <span class="proj" id="t-proj"></span>
+      <span class="tbtn" id="t-play" title="start / pause"></span>
+      <span class="tbtn" id="t-stop" title="stop &amp; log" style="display:none"></span>
+      <span class="tbtn" id="t-mode" title="mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></span>
+    </div>
+    <div class="tmenu" id="t-menu"></div>
+  </div>
+</div>
+<script>
+const invoke=window.__TAURI__?.core?.invoke;
+const evt=window.__TAURI__?.event;
+const HOME='deck';
+let state={tabs:[],active:HOME};   // tabs: [{id,name}]
+let status={};                     // id -> 'running'|'external'|'stopped'
+
+const G_DECK='<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="5" rx="1.6" fill="#6d8bff"/><rect x="3" y="10.5" width="18" height="5" rx="1.6" fill="#5a6b8f"/><rect x="3" y="17" width="12" height="5" rx="1.6" fill="#33404f"/><circle cx="19" cy="19.5" r="2" fill="#34d399"/></svg>';
+const X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(){
+  const home=`<div class="tab home ${state.active===HOME?'active':''}" onclick="activate('${HOME}')">
+      <span class="glyph">${G_DECK}</span><span class="nm">Deck</span></div>`;
+  const tabs=state.tabs.map(t=>{
+    const st=status[t.id]||'stopped';
+    return `<div class="tab ${state.active===t.id?'active':''}" onclick="activate('${esc(t.id)}')" title="${esc(t.name)}">
+      <span class="dot ${st}"></span><span class="nm">${esc(t.name)}</span>
+      <span class="x" onclick="event.stopPropagation();closeTab('${esc(t.id)}')">${X}</span></div>`;
+  }).join('');
+  document.getElementById('tabs').innerHTML=home+tabs;
+
+  // right-side live indicator
+  const run=Object.values(status).filter(s=>s==='running').length;
+  const live=document.getElementById('live');
+  live.classList.toggle('on',run>0);
+  document.getElementById('liven').innerHTML=run?`<b>${run}</b> running`:'Deck';
+}
+
+function activate(target){ invoke&&invoke('activate',{target}).catch(()=>{}); }
+function closeTab(id){ invoke&&invoke('close_tool',{id}).catch(()=>{}); }
+
+// live status for the tab dots (chrome is served from :8800, so it can poll directly)
+async function pollStatus(){
+  try{const r=await fetch('/api/tools');const j=await r.json();
+    status={}; (j.tools||[]).forEach(t=>status[t.id]=t.status); render();
+  }catch(e){}
+  setTimeout(pollStatus,2500);
+}
+
+// ---- focus timer (the always-visible leash) --------------------------------
+const MODES={
+  pomodoro:{label:'Pomodoro 25/5',focus:25*60,brk:5*60},
+  '52-17':{label:'52 / 17',focus:52*60,brk:17*60},
+  '90-20':{label:'90 / 20',focus:90*60,brk:20*60},
+  flow:{label:'Flow (count up)',countUp:true},
+};
+const PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
+const PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+const STOP='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>';
+let tmr={mode:'pomodoro',phase:'focus',running:false,remaining:MODES.pomodoro.focus,up:0,focusAcc:0,project:null};
+try{ const s=JSON.parse(localStorage.getItem('deck.timer.mode')); if(s&&MODES[s]) tmr.mode=s; }catch{}
+if(!MODES[tmr.mode].countUp) tmr.remaining=MODES[tmr.mode].focus;
+
+function activeProject(){
+  if(!state.active||!state.active.startsWith('proj:')) return null;
+  const t=(state.tabs||[]).find(x=>x.id===state.active);
+  return { id:state.active.slice(5), name:t?t.name:state.active.slice(5) };
+}
+const fmtT=s=>{ s=Math.max(0,Math.round(s)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60;
+  return h?`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; };
+
+function renderTimer(){
+  const m=MODES[tmr.mode], el=document.getElementById('timer');
+  el.classList.toggle('run',tmr.running);
+  el.classList.toggle('brk',tmr.phase==='break');
+  document.getElementById('t-ph').textContent=m.countUp?'Flow':(tmr.phase==='break'?'Break':'Focus');
+  document.getElementById('t-clock').textContent=fmtT(m.countUp?tmr.up:tmr.remaining);
+  const p=tmr.running&&tmr.project?tmr.project.name:(activeProject()?.name||'');
+  document.getElementById('t-proj').textContent=p?('· '+p):'';
+  document.getElementById('t-play').innerHTML=tmr.running?PAUSE:PLAY;
+  const dirty=tmr.running||tmr.up>0||tmr.focusAcc>0||(!m.countUp&&tmr.remaining!==m.focus);
+  document.getElementById('t-stop').style.display=dirty?'grid':'none';
+  document.getElementById('t-stop').innerHTML=STOP;
+}
+function logFocus(){
+  const secs=tmr.focusAcc; tmr.focusAcc=0;
+  if(secs<30) return;
+  fetch('/api/timer/log',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({project:(tmr.project?.name)||'General',seconds:secs,mode:MODES[tmr.mode].label})}).catch(()=>{});
+}
+function flash(){ const el=document.getElementById('timer'); el.animate?.([{opacity:1},{opacity:.35},{opacity:1}],{duration:900,iterations:3}); }
+function tick(){
+  if(!tmr.running) return;
+  tmr.sessionSecs=(tmr.sessionSecs||0)+1;
+  const m=MODES[tmr.mode];
+  if(m.countUp){ tmr.up++; tmr.focusAcc++; }
+  else {
+    tmr.remaining--;
+    if(tmr.phase==='focus') tmr.focusAcc++;
+    if(tmr.remaining<=0){
+      if(tmr.phase==='focus'){ logFocus(); tmr.phase='break'; tmr.remaining=m.brk; flash(); }
+      else { tmr.phase='focus'; tmr.remaining=m.focus; flash(); }
+    }
+  }
+  renderTimer();
+}
+function startTimer(){
+  if(!tmr.project) tmr.project=activeProject()||{id:'general',name:'General'};
+  tmr.running=true; renderTimer();
+}
+function pauseTimer(){ tmr.running=false; renderTimer(); }
+function stopTimer(){
+  const proj=tmr.project, sess=tmr.sessionSecs||0;
+  logFocus();
+  // auto session-recap: diff the project's repos over the session → daily (only real sessions)
+  if(proj&&proj.id&&proj.id!=='general'&&sess>=300)
+    fetch('/api/recap',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project:proj.id,seconds:sess})}).catch(()=>{});
+  const m=MODES[tmr.mode];
+  tmr={mode:tmr.mode,phase:'focus',running:false,remaining:m.countUp?0:m.focus,up:0,focusAcc:0,sessionSecs:0,project:null}; renderTimer(); }
+function setMode(k){ localStorage.setItem('deck.timer.mode',k);
+  tmr={mode:k,phase:'focus',running:false,remaining:MODES[k].countUp?0:MODES[k].focus,up:0,focusAcc:0,project:null};
+  document.getElementById('t-menu').classList.remove('show'); renderTimer(); }
+document.getElementById('t-play').onclick=()=>tmr.running?pauseTimer():startTimer();
+document.getElementById('t-stop').onclick=stopTimer;
+document.getElementById('t-mode').onclick=()=>{
+  const menu=document.getElementById('t-menu');
+  menu.innerHTML=Object.entries(MODES).map(([k,m])=>`<div class="mi ${k===tmr.mode?'on':''}" onclick="setMode('${k}')">${m.label}${k===tmr.mode?' ✓':''}</div>`).join('')
+    +`<div class="sep"></div><div class="mi" onclick="stopTimer();document.getElementById('t-menu').classList.remove('show')">Stop &amp; log session</div>`;
+  menu.classList.toggle('show');
+};
+setInterval(tick,1000);
+
+// reload the whole Deck (frontend served no-store + manifests read per-request → picks up changes)
+document.getElementById('reload').onclick=()=>{
+  const b=document.getElementById('reload'); b.classList.add('spin'); setTimeout(()=>b.classList.remove('spin'),700);
+  if(invoke) invoke('reload_all').catch(()=>location.reload()); else location.reload();
+};
+
+let prevTabIds=new Set();
+async function boot(){
+  if(invoke){ try{ state=await invoke('get_tabs'); prevTabIds=new Set((state.tabs||[]).map(t=>t.id)); }catch(e){} }
+  if(evt){ evt.listen('tabs:changed',ev=>{
+    const ns=ev.payload||state;
+    const freshProject = ns.active && ns.active.startsWith('proj:') && !prevTabIds.has(ns.active);
+    state=ns; render();
+    const ap=activeProject();
+    if(freshProject && ap && !tmr.running){ tmr.project=ap; startTimer(); }       // auto-boot: open a project → clock ticking
+    else if(tmr.running && ap && (!tmr.project||tmr.project.id!==ap.id)){ logFocus(); tmr.project=ap; } // follow: bank old, rebind
+    prevTabIds=new Set((ns.tabs||[]).map(t=>t.id));
+    renderTimer();
+  }); }
+  render(); renderTimer(); pollStatus();
+}
+boot();
+</script>

@@ -1,0 +1,189 @@
+<!doctype html><meta charset="utf-8"><title>Claude</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface2:#161d27;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#e0906a;--ok:#34d399;--warn:#fbbf24;--hot:#fb923c;--bad:#f87171}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(720px 420px at 12% -10%, #e0906a12, transparent 70%)}
+  .wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:30px 30px 90px}
+  h1{font-size:22px;font-weight:720;letter-spacing:-.02em;margin:0 0 3px;display:flex;align-items:center;gap:11px}
+  .glyph{width:30px;height:30px}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 26px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;
+    margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .panel{background:var(--surface);border:1px solid var(--line);padding:16px 18px}
+  .banner{display:none;gap:13px;align-items:flex-start;margin-bottom:6px;padding:15px 17px;
+    background:linear-gradient(180deg,#2a1414,#1a1010);border:1px solid #7c2a2a;border-left:3px solid var(--bad);font-size:13px}
+  .banner b{color:#fca5a5;display:block;margin-bottom:3px}
+  .banner .why{color:var(--dim);font-size:12.5px}
+  /* spend meters */
+  .meters{display:flex;flex-direction:column;gap:14px}
+  .meter{display:grid;grid-template-columns:96px minmax(0,1fr) 220px;align-items:center;gap:14px}
+  .meter .nm{color:var(--dim);font-size:12.5px}
+  .meter .track{height:8px;background:#0b1117;border:1px solid var(--line);position:relative;overflow:hidden}
+  .meter .fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s}
+  .meter .tick{position:absolute;top:-1px;bottom:-1px;width:1px;background:var(--line2)}
+  .meter .v{font-variant-numeric:tabular-nums;font-size:12.5px;text-align:right;color:var(--dim);white-space:nowrap}
+  .meter .v b{color:var(--text);font-weight:640}
+  .meter.warn50 .fill{background:var(--warn)} .meter.warn80 .fill{background:var(--hot)} .meter.out .fill{background:var(--bad)}
+  .meter.total{padding-top:12px;border-top:1px solid var(--line)}
+  .lvl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-left:8px}
+  .lvl.warn50{color:var(--warn)} .lvl.warn80{color:var(--hot)} .lvl.out{color:var(--bad)}
+  /* keys */
+  .keys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  @media(max-width:760px){.keys{grid-template-columns:minmax(0,1fr)}.meter{grid-template-columns:80px minmax(0,1fr) 190px}}
+  .key{background:var(--surface);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .key .top{display:flex;align-items:center;gap:10px}
+  .key .tn{font-weight:640}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border:1px solid}
+  .pill.present{color:#86efac;border-color:#1f6f52;background:#0c1f17}
+  .pill.missing{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .key .svc{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint)}
+  .route{display:flex;flex-direction:column;gap:12px}
+  .route .now{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .route .now b{font-weight:680}
+  .route .setting{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint)}
+  .pill.none{color:#fcd34d;border-color:#7a5a12;background:#1f170a}
+  .via{font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+  .how{font-size:12px;color:var(--dim)}
+  .cmd{display:flex;align-items:center;gap:8px;background:#080b0f;border:1px solid var(--line);padding:7px 9px;min-width:0}
+  .cmd code{flex:1;min-width:0;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d6e2;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .cmd code::-webkit-scrollbar{display:none}
+  button{border:1px solid var(--line2);background:var(--surface3);color:var(--dim);padding:5px 10px;font:600 11.5px inherit;cursor:pointer;transition:.14s}
+  button:hover{color:var(--text);border-color:var(--faint)}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{white-space:nowrap;text-align:left;font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:640;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+  td{padding:8px 10px;border-bottom:1px solid #131a24;color:var(--dim);vertical-align:top}
+  tr:hover td{background:#0f151d}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.mono{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap}
+  td.nw{white-space:nowrap}
+  td b{color:var(--text);font-weight:600}
+  .err{color:var(--bad);font-weight:600}
+  .okc{color:var(--text)}
+  .scroll{overflow-x:auto}
+  .empty{color:var(--faint);font-size:12.5px;padding:18px 4px;text-align:center}
+  .note{color:var(--faint);font-size:11.5px;margin-top:10px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;
+    background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <h1><span class="glyph"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#1a110c"/>
+    <path d="M16 6v20M6 16h20M9 9l14 14M23 9L9 23" stroke="#e0906a" stroke-width="2.4" stroke-linecap="square"/>
+    <circle cx="16" cy="16" r="3.4" fill="#1a110c" stroke="#e0906a" stroke-width="1.6"/></svg></span> Claude</h1>
+  <p class="sub">Two routes: an API key per tool, spent against the caps below, and your Claude Code login. Which one answers now, and every call Deck made.</p>
+
+  <div class="banner" id="banner"><span style="color:var(--bad)">&#9888;</span><div><b>Credits out</b><div class="why" id="bannerwhy"></div></div></div>
+
+  <div class="lbl" id="monthlbl">This month</div>
+  <div class="panel"><div class="meters" id="meters"><div class="empty">loading</div></div></div>
+
+  <div class="lbl">Route</div>
+  <div class="panel route" id="route"><div class="empty">loading</div></div>
+
+  <div class="lbl">Keys</div>
+  <div class="keys" id="keys"></div>
+
+  <div class="lbl">Last calls</div>
+  <div class="panel scroll" id="calls"><div class="empty">loading</div></div>
+
+  <div class="lbl">Presets</div>
+  <div class="panel scroll" id="presets"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200)}
+const usd=v=>'$'+(Number(v)||0).toFixed(2);
+const usd4=v=>{v=Number(v)||0;return v>=0.01?'$'+v.toFixed(2):v>0?'$'+v.toFixed(4):'$0'};
+const tok=n=>{n=Number(n)||0;return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'k':String(n)};
+const LEVEL={ok:'',warn50:'over half',warn80:'over 80%',out:'spent'};
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const when=ts=>{const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})};
+
+function meter(name,spent,cap,level,cls=''){
+  const pct=cap>0?Math.min(100,spent/cap*100):100;
+  return `<div class="meter ${level} ${cls}"><span class="nm">${name}</span>
+    <span class="track"><span class="fill" style="width:${pct}%"></span><span class="tick" style="left:50%"></span><span class="tick" style="left:80%"></span></span>
+    <span class="v"><b>${usd(spent)}</b> of ${usd(cap)}${LEVEL[level]?`<span class="lvl ${level}">${LEVEL[level]}</span>`:''}</span></div>`;
+}
+
+const cliReady=s=>!!(s.cli&&s.cli.installed&&s.cli.loggedIn);
+const SETTING={auto:'auto: the API while a key has money left, then your Claude Code login',api:'api: the API only',cli:'cli: your Claude Code login only'};
+// Which route a Reviews call takes right now, the way the kit decides it.
+function routeNow(s){
+  const sp=s.spend, key=s.keys.reviews==='present', money=sp.levels.reviews!=='out'&&sp.levels.total!=='out';
+  if(s.route==='cli') return cliReady(s)?'cli':'none';
+  if(s.route==='api') return key&&money?'api':'none';
+  if(key&&money&&!(cliReady(s)&&s.creditsOut)) return 'api';
+  return cliReady(s)?'cli':'none';
+}
+function routeHtml(s){
+  const now=routeNow(s), c=s.cli||{};
+  const label={api:'the API',cli:'your Claude Code login',none:'nothing: reviews merge on CI alone'}[now];
+  const cliPill=!c.installed?'<span class="pill missing">not installed</span>'
+    :c.loggedIn?`<span class="pill present">logged in${c.subscriptionType?' · '+esc(c.subscriptionType):''}${c.version?' · '+esc(c.version):''}</span>`:'<span class="pill missing">not logged in</span>';
+  const login='claude auth login';
+  return `<div class="now">Reviews answer through <b>${label}</b><span class="pill ${now==='none'?'none':'present'}">${now}</span></div>
+    <div class="setting">claude.route = ${esc(SETTING[s.route]||s.route)}</div>
+    <div class="now"><span class="tn">Claude Code login</span>${cliPill}</div>
+    ${c.installed&&!c.loggedIn?`<div class="how">Log in once in a terminal:</div><div class="cmd"><code>${login}</code><button data-copy="${login}">Copy</button></div>`:''}
+    ${!c.installed?'<div class="how">Install Claude Code to use your plan when there is no key or the credits are out.</div>':''}`;
+}
+
+function copy(text){navigator.clipboard?.writeText(text).then(()=>toast('copied'),()=>toast('copy failed'))}
+
+function render(s){
+  const sp=s.spend;
+  const [y,m]=sp.month.split('-');
+  $('#monthlbl').textContent=`${MONTHS[Number(m)-1]} ${y} · ${sp.calls} call${sp.calls===1?'':'s'}`;
+  $('#meters').innerHTML=meter('Reviews',sp.byTool.reviews,sp.caps.reviews,sp.levels.reviews)
+    +meter('Mod Lab',sp.byTool.modlab,sp.caps.modlab,sp.levels.modlab)
+    +meter('All tools',sp.total,sp.caps.total,sp.levels.total,'total');
+
+  const b=$('#banner');
+  if(s.creditsOut){ b.style.display='flex';
+    $('#bannerwhy').textContent=`${s.creditsOut.message} (since ${when(s.creditsOut.ts)}). `+(cliReady(s)&&s.route!=='api'
+      ?'Until the credits renew on the 1st, calls go through your Claude Code login.'
+      :'API calls fail until the credits renew on the 1st; reviews let merges through on CI alone and say so.'); }
+  else b.style.display='none';
+
+  $('#route').innerHTML=routeHtml(s);
+
+  const NAMES={reviews:'Reviews',modlab:'Mod Lab'};
+  $('#keys').innerHTML=Object.entries(s.keys).map(([t,st])=>{
+    const k=s.keychain[t];
+    const cmd=`security add-generic-password -s ${k.service} -a "$USER" -w`;
+    return `<div class="key"><div class="top"><span class="tn">${NAMES[t]||t}</span><span class="pill ${st}">${st==='present'?'key present':'key missing'}</span></div>
+      <div class="svc">Keychain: ${esc(k.service)} · ${esc(k.account)}</div>
+      ${st==='missing'?`<div class="how">Create a key in the Console's Deck workspace, then store it. The command asks for the key, so it never lands in your shell history:</div>
+      <div class="cmd"><code>${esc(cmd)}</code><button data-copy="${esc(cmd)}">Copy</button></div>`:''}
+    </div>`;
+  }).join('');
+
+  const rows=s.recent.map(c=>{
+    const toks=c.ok===false&&!c.input_tokens?'<td class="num">-</td>':`<td class="num nw" title="input ${c.input_tokens}, cache write ${c.cache_creation_input_tokens}, cache read ${c.cache_read_input_tokens}, output ${c.output_tokens}">${tok(c.input_tokens)} / ${tok(c.cache_creation_input_tokens)} / ${tok(c.cache_read_input_tokens)} / ${tok(c.output_tokens)}</td>`;
+    return `<tr><td class="nw">${when(c.ts)}</td><td><b>${esc(NAMES[c.tool]||c.tool)}</b></td><td class="mono">${esc(c.preset)}</td><td class="mono">${esc((c.model||'').replace('claude-',''))}</td>
+      ${toks}<td class="num">${c.ok===false&&c.error?`<span class="err" title="${esc(c.message)}">${esc(c.error)}</span>`:c.route==='cli'?`<span class="okc" title="the CLI's estimate: ${usd4(c.est_usd)}">plan</span>`:`<span class="okc">${usd4(c.cost_usd)}</span>`}</td><td><span class="via">${esc(c.route||'api')}</span></td>
+      <td class="mono">${esc(c.ref||'')}</td></tr>`;
+  }).join('');
+  $('#calls').innerHTML=rows?`<table><thead><tr><th>When</th><th>Tool</th><th>Preset</th><th>Model</th><th class="num" title="input / cache write / cache read / output">Tokens in / cw / cr / out</th><th class="num">Cost</th><th>Route</th><th>For</th></tr></thead><tbody>${rows}</tbody></table>`
+    :'<div class="empty">No calls yet. Reviews and Mod Lab write here once a route can answer.</div>';
+
+  $('#presets').innerHTML=`<table><thead><tr><th>Preset</th><th>Model</th><th>Effort</th><th class="num">Max tokens</th><th>Cache</th><th class="num">$ / MTok in, out</th><th>Used for</th></tr></thead><tbody>${
+    s.presets.map(p=>`<tr><td class="mono"><b>${esc(p.id)}</b></td><td class="mono">${esc(p.model.replace('claude-',''))}</td><td>${esc(p.effort)}</td><td class="num">${(p.maxTokens/1000)}k</td><td>${p.cache?esc(p.cache):'none'}</td><td class="num">${p.price?`${usd(p.price.input)}, ${usd(p.price.output)}`:'-'}</td><td>${esc(p.use)}</td></tr>`).join('')
+  }</tbody></table><div class="note">Read-only: presets live in lib/claude/presets.mjs. Caps live in state.json under claude.caps, and claude.route picks the route.</div>`;
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]'); if(b) copy(b.dataset.copy);});
+async function refresh(){ try{ render(await api('/api/claude/status')); }catch(e){ $('#meters').innerHTML=`<div class="empty">${esc(e.message)}</div>`; } }
+refresh(); setInterval(refresh,5000);
+</script>

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Deck",
+  "version": "0.1.0",
+  "identifier": "me.zlex.deck",
+  "build": {
+    "beforeDevCommand": "node scripts/ensure-gateway.mjs",
+    "beforeBuildCommand": "node scripts/build-gateway.mjs",
+    "devUrl": "http://localhost:8800",
+    "frontendDist": "../public"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns", "icons/icon.ico"],
+    "externalBin": ["binaries/deck-server"]
+  }
+}

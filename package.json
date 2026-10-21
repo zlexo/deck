@@ -1,0 +1,29 @@
+{
+  "name": "deck",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A local control panel for your dev tools (a Node gateway and a native Tauri shell)",
+  "scripts": {
+    "start": "node server.js",
+    "test": "DECK_CLI=off node --test 'test/**/*.test.mjs'",
+    "check": "node scripts/check.mjs",
+    "check:quit": "tauri build --bundles app --config src-tauri/tauri.quitcheck.conf.json && node scripts/check-quit.mjs --remove-app",
+    "cli:install": "node scripts/install-cli.mjs",
+    "tauri": "tauri",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build",
+    "app:install": "tauri build && node scripts/install-app.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0"
+  },
+  "bin": {
+    "deck": "bin/deck.mjs"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

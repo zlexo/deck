@@ -1,0 +1,214 @@
+<!doctype html><meta charset="utf-8"><title>Reviews</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface2:#161d27;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#a78bfa;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(720px 420px at 12% -10%, #a78bfa12, transparent 70%)}
+  .wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:30px 30px 90px}
+  h1{font-size:22px;font-weight:720;letter-spacing:-.02em;margin:0 0 3px;display:flex;align-items:center;gap:11px}
+  .glyph{width:30px;height:30px}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);order:2}
+  .lbl .tail{order:3;text-transform:none;letter-spacing:0;font-weight:500;font-size:12px}
+  .panel{background:var(--surface);border:1px solid var(--line);overflow-x:auto}
+  button{border:1px solid var(--line2);background:var(--surface3);color:var(--text);padding:6px 12px;font:600 12px inherit;cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--faint)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#120a26}
+  button.arm{background:#3a1515;border-color:var(--bad);color:#fecaca}
+  button[disabled]{opacity:.45;cursor:default}
+  /* queue strip */
+  .strip{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 16px;background:var(--surface);border:1px solid var(--line)}
+  .sw{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none;font-size:13px;font-weight:600}
+  .sw .t{width:34px;height:18px;background:#0b1117;border:1px solid var(--line2);position:relative;transition:.15s}
+  .sw .t i{position:absolute;top:2px;left:2px;width:12px;height:12px;background:var(--faint);transition:.15s}
+  .sw.on .t{background:#1d1536;border-color:var(--accent)} .sw.on .t i{left:18px;background:var(--accent)}
+  .strip .info{color:var(--faint);font-size:12px}
+  .strip .info b{color:var(--dim);font-weight:600}
+  .spend{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--faint)}
+  .spend .bar{width:120px;height:6px;background:#0b1117;border:1px solid var(--line);position:relative;overflow:hidden}
+  .spend .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+  .spend b{color:var(--text);font-variant-numeric:tabular-nums}
+  .banner{margin-top:12px;padding:12px 15px;font-size:12.5px;border:1px solid #6f5c1f;border-left:3px solid var(--warn);background:#1d190d;color:#fcd38a}
+  .banner.bad{border-color:#7c2a2a;border-left-color:var(--bad);background:#1f0f0f;color:#fca5a5}
+  /* PR rows */
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:640;padding:10px 12px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid #131a24;color:var(--dim);vertical-align:middle}
+  tr.pr{cursor:pointer} tr.pr:hover td,tr.pr.open td{background:#0f151d}
+  td.n{color:var(--text);font-weight:640;white-space:nowrap} td.t{color:var(--text);width:100%;max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  td.mono,.mono{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--line2);color:var(--faint);white-space:nowrap}
+  .st .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .st.green,.st.pass{color:#86efac;border-color:#1f6f52;background:#0c1f17}
+  .st.red,.st.blocked{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .st.running,.st.notes,.st.amber{color:#fcd38a;border-color:#6f5c1f;background:#211c0d}
+  .st.running .d{animation:pulse 1.2s infinite}
+  .st.failed{color:#c4b5fd;border-color:#4c3a7a;background:#160f26}
+  @keyframes pulse{50%{opacity:.25}}
+  .gate{font-size:11.5px;white-space:nowrap}
+  .gate.g0{color:#86efac}.gate.g2,.gate.g7{color:#fca5a5}.gate.g3,.gate.g4{color:#fcd38a}.gate.g5,.gate.g6{color:var(--faint)}
+  /* detail */
+  .detail>td{padding:4px 16px 20px;background:#0c1118}
+  .summ{color:var(--text);font-size:13.5px;line-height:1.6;margin:10px 0 4px;max-width:820px}
+  .meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);font-size:11.5px;margin:8px 0 2px}
+  .meta b{color:var(--dim);font-weight:600}
+  .fcard{border:1px solid var(--line);background:var(--surface);margin-top:12px}
+  .fcard .fh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .sev{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1px solid}
+  .sev.blocker{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .sev.should_fix{color:#fcd38a;border-color:#6f5c1f;background:#211c0d}
+  .sev.nit{color:var(--dim);border-color:var(--line2)} .sev.question{color:#a5b4fc;border-color:#3a3f7a}
+  .fcard .loc{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
+  .fcard .vr{margin-left:auto;font-size:11px;color:var(--faint)}
+  .fcard .vr.real{color:#86efac}
+  .quote{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#e2e8f0;background:#06090d;border-left:3px solid var(--accent);margin:12px 14px 0;padding:9px 12px;white-space:pre-wrap;word-break:break-word}
+  .fb{padding:10px 14px 12px;display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:12.5px}
+  .fb .k{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+  .fb .v{color:var(--dim);line-height:1.55}
+  .demoted{margin:0 14px 10px;font-size:11.5px;color:#fcd38a}
+  .dropped{margin-top:14px;font-size:12px;color:var(--faint)}
+  .dropped summary{cursor:pointer;color:var(--dim)}
+  .dropped li{margin:4px 0}
+  .ovr{margin-top:16px;padding:12px 14px;border:1px solid var(--line);background:var(--surface)}
+  .ovr textarea{width:100%;min-height:62px;background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:9px 11px;font:13px inherit;resize:vertical;margin:8px 0}
+  .ovr textarea:focus{outline:0;border-color:var(--accent)}
+  .ovr .done{color:#fcd38a;font-size:12.5px}
+  .empty{color:var(--faint);font-size:12.5px;padding:16px 14px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <h1><span class="glyph"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#120c22"/>
+    <circle cx="14" cy="14" r="6.5" stroke="#a78bfa" stroke-width="2.4"/><path d="M19 19l6 6" stroke="#a78bfa" stroke-width="2.6" stroke-linecap="square"/>
+    <path d="M11.2 14.2l2 2 3.6-4" stroke="#a78bfa" stroke-width="1.8" stroke-linecap="square"/></svg></span> Reviews</h1>
+  <p class="sub">Every PR on a configured repo gets a verified review once its CI is green. Findings must quote real lines; a blocker gets a second look before it can block a merge.</p>
+  <div id="strip"></div>
+  <div id="repos"><div class="empty">loading</div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+const post=(u,b)=>api(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
+const usd=v=>v==null?'':'$'+(Number(v)||0).toFixed(2);
+const at=ts=>ts?new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+const st=(cls,label)=>`<span class="st ${cls}"><span class="d"></span>${esc(label)}</span>`;
+const SEV={blocker:'Blocker',should_fix:'Should fix',nit:'Nit',question:'Question'};
+const KIND={BudgetExhausted:'budget out',CreditsOut:'credits out',RateLimited:'rate limited',Overloaded:'API busy',AuthMissing:'key missing',BadRequest:'API error',Refused:'declined'};
+
+let data=null, open=null /* repo#pr */, details={}, overrideText={}, armed=null, armTimer=null;
+
+function reviewPill(r){
+  if(!r) return '<span style="color:var(--faint)">none</span>';
+  if(r.status==='failed') return st('failed',KIND[r.error&&r.error.kind]||'failed');
+  if(r.verdict==='blocked') return st('blocked',`blocked · ${r.blockers}`);
+  if(r.verdict==='pass_with_notes') return st('notes',`notes · ${r.notes}`);
+  return st('pass','passed');
+}
+function ciPill(c){ return c?st(c==='green'?'green':c==='red'?'red':'running',c):'<span style="color:var(--faint)">none</span>'; }
+
+function finding(f){
+  const lines=f.line_start===f.line_end?`${f.line_start}`:`${f.line_start}-${f.line_end}`;
+  const vr=f.verify?`<span class="vr ${f.verify.real?'real':''}" title="${esc(f.verify.why)}">${f.verify.real?'second look: real':'second look: not real'}</span>`:'';
+  return `<div class="fcard"><div class="fh"><span class="sev ${esc(f.severity)}">${SEV[f.severity]||esc(f.severity)}</span><span class="loc">${esc(f.file)}:${lines}</span>${vr}</div>
+    ${f.demoted?`<div class="demoted" style="margin-top:10px">Demoted from ${esc(SEV[f.demoted.from]||f.demoted.from)}: ${esc(f.demoted.reason)}</div>`:''}
+    <div class="quote">${esc(f.quote)}</div>
+    <div class="fb"><span class="k">Problem</span><span class="v">${esc(f.problem)}</span>
+      ${f.failure_scenario?`<span class="k">How it breaks</span><span class="v">${esc(f.failure_scenario)}</span>`:''}
+      ${f.suggestion?`<span class="k">Suggestion</span><span class="v">${esc(f.suggestion)}</span>`:''}</div></div>`;
+}
+
+function detailHtml(repo,p){
+  const key=repo.id+'#'+p.pr, d=details[key];
+  if(!p.review) return `<div class="empty">Not reviewed yet. ${p.ci==='green'?'The queue picks it up on its next pass, or press Review.':'The review waits for a green CI record on this head (CI page).'}</div>`;
+  if(!d) return '<div class="empty">loading the review</div>';
+  if(d.error) return `<div class="empty">${esc(d.error)}</div>`;
+  const r=d.record;
+  if(r.status==='failed') return `<div class="empty">No review: ${esc(r.error&&r.error.message||'the API could not be reached')}. Until one runs, this head may merge on CI alone, noted in the PR body.</div>`;
+  const order={blocker:0,should_fix:1,question:2,nit:3};
+  const fs=[...(r.findings||[])].sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
+  const ctx=r.context||{};
+  const ov=d.override;
+  const blocked=r.verdict==='blocked';
+  return `<div class="summ">${esc(r.summary)}</div>
+    <div class="meta"><span><b>${esc(r.model||'')}</b> · ${esc(r.preset||'')}</span><span>cost <b>${usd(r.costUsd)}</b></span>
+      ${r.risky&&r.risky.length?`<span title="${esc(r.risky.join('\n'))}">risky paths: <b>${r.risky.length}</b></span>`:''}
+      ${ctx.tokensEst?`<span>context about <b>${Math.round(ctx.tokensEst/1000)}k</b> tokens${r.partial?' (partial: hunks only)':''}</span>`:''}
+      ${ctx.design&&ctx.design.length?`<span>design: <b>${esc(ctx.design.join(', '))}</b></span>`:''}
+      ${ctx.stack&&ctx.stack.length?`<span>stacked on <b>${esc(ctx.stack.map(n=>'#'+n).join(', '))}</b></span>`:''}
+      ${r.githubStatus?`<span>GitHub: <b>${esc(r.githubStatus.description)}</b></span>`:''}
+      <span>head <b class="mono">${esc(r.sha.slice(0,7))}</b> · ${at(r.finishedAt)}</span></div>
+    ${fs.map(finding).join('')||'<div class="empty" style="padding-left:0">No findings.</div>'}
+    ${r.dropped&&r.dropped.length?`<details class="dropped"><summary>${r.dropped.length} finding${r.dropped.length===1?'':'s'} dropped as unverifiable (each did not match the code at the head)</summary><ul>${r.dropped.map(x=>`<li><span class="mono">${esc(x.finding&&x.finding.file)}:${esc(x.finding&&x.finding.line_start)}</span> ${esc(x.reason)}</li>`).join('')}</ul></details>`:''}
+    ${ov?`<div class="ovr"><div class="done">Overridden by ${esc(ov.who)} at ${at(ov.ts)}: ${esc(ov.reason)}</div></div>`
+      :blocked?`<div class="ovr"><b style="font-size:12.5px">Override this head</b><div style="color:var(--faint);font-size:12px">Merges refuse a blocked head. If the blocker is wrong or accepted, say why; it is recorded with this head only, and a new commit is reviewed again.</div>
+        <textarea id="ov-${esc(key)}" placeholder="Why this can merge anyway" oninput="overrideText['${esc(key)}']=this.value">${esc(overrideText[key]||'')}</textarea>
+        <button class="${armed==='ov'+key?'arm':''}" onclick="override('${repo.id}',${p.pr},'${r.sha}')">${armed==='ov'+key?'Sure? Record the override':'Record override'}</button></div>`:''}`;
+}
+
+function render(){
+  const q=data.queue||{}, sp=data.spend||{byTool:{},caps:{}};
+  const spent=sp.byTool.reviews||0, cap=sp.caps.reviews||40;
+  const err=q.lastError?`<div class="banner ${/AuthMissing|CreditsOut|BudgetExhausted/.test(q.lastError.kind||q.lastError)?'bad':''}">${esc(q.lastError.message||q.lastError)}${/AuthMissing/.test(q.lastError.kind||'')?' (see the Claude page for the key)':''}</div>`:'';
+  $('#strip').innerHTML=`<div class="strip"><span class="sw ${q.on?'on':''}" onclick="setQueue(${!q.on})" role="switch" aria-checked="${!!q.on}"><span class="t"><i></i></span>Auto review</span>
+    <span class="info">${q.on?`every <b>${q.intervalMin||10} min</b>${q.lastPassAt?` · last pass <b>${at(q.lastPassAt)}</b>`:''}${q.nextPassAt?` · next <b>${at(q.nextPassAt)}</b>`:''}`:'off: reviews run only when asked'}
+      ${q.running?` · reviewing <b>${esc(q.running.repo)} #${q.running.pr}</b>`:''}</span>
+    <span class="spend">this month <b>${usd(spent)}</b> of ${usd(cap)}<span class="bar"><i style="width:${Math.min(100,spent/cap*100)}%"></i></span></span></div>${err}`;
+  $('#repos').innerHTML=data.repos.map(repo=>{
+    const rows=repo.prs.map(p=>{
+      const key=repo.id+'#'+p.pr, isOpen=open===key;
+      const running=q.running&&q.running.repo===repo.id&&q.running.pr===p.pr;
+      return `<tr class="pr ${isOpen?'open':''}" onclick="toggle('${repo.id}',${p.pr})"><td class="n">#${p.pr}</td><td class="t" title="${esc(p.title)}">${esc(p.title)}</td>
+        <td class="mono">${esc((p.sha||'').slice(0,7))}</td><td>${ciPill(p.ci)}</td><td>${running?st('running','reviewing'):reviewPill(p.review)}</td>
+        <td class="num">${p.review&&p.review.costUsd!=null?usd(p.review.costUsd):''}</td>
+        <td class="gate g${p.gate?p.gate.code:''}">${esc(p.gate?p.gate.label:'')}</td>
+        <td style="text-align:right"><button onclick="event.stopPropagation();runReview('${repo.id}',${p.pr})" ${running?'disabled':''} title="${p.review?'Review this head again':'Review now'}">${p.review?'Again':'Review'}</button></td></tr>
+        ${isOpen?`<tr class="detail"><td colspan="8">${detailHtml(repo,p)}</td></tr>`:''}`;
+    }).join('');
+    return `<div class="lbl">${esc(repo.name)}<span class="tail" style="color:var(--faint)">${repo.prs.length} open PR${repo.prs.length===1?'':'s'}</span></div>
+      <div class="panel">${rows?`<table><thead><tr><th>PR</th><th>Title</th><th>Head</th><th>CI</th><th>Review</th><th style="text-align:right">Cost</th><th>Gate</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty">No open PRs.</div>'}</div>`;
+  }).join('');
+}
+
+async function loadDetail(repoId,p){
+  const key=repoId+'#'+p.pr;
+  if(!p.review){ details[key]=null; return; }
+  try{ details[key]=await api(`/api/reviews/record?repo=${repoId}&pr=${p.pr}&sha=${p.sha}`); }
+  catch(e){ details[key]={error:e.message}; }
+}
+async function toggle(repoId,pr){
+  const key=repoId+'#'+pr;
+  if(open===key){ open=null; return render(); }
+  open=key; render();
+  const p=data.repos.find(r=>r.id===repoId).prs.find(x=>x.pr===pr);
+  await loadDetail(repoId,p); render();
+}
+async function setQueue(on){ try{ await post('/api/reviews/queue',{on}); toast(on?'auto review on':'auto review off'); refresh(); }catch(e){ toast(e.message); } }
+async function runReview(repo,pr){ try{ await post('/api/reviews/run',{repo,pr}); toast(`reviewing ${repo} #${pr}`); refresh(); }catch(e){ toast(e.message); } }
+async function override(repo,pr,sha){
+  const key=repo+'#'+pr, reason=(overrideText[key]||'').trim();
+  if(!reason) return toast('say why first');
+  if(armed!=='ov'+key){ armed='ov'+key; clearTimeout(armTimer); armTimer=setTimeout(()=>{armed=null;render();},4000); return render(); }
+  armed=null;
+  try{ await post('/api/reviews/override',{repo,pr,sha,reason}); toast('override recorded'); delete overrideText[key]; details[key]=null; await refresh(); const p=data.repos.find(r=>r.id===repo).prs.find(x=>x.pr===pr); await loadDetail(repo,p); render(); }
+  catch(e){ toast(e.message); }
+}
+async function refresh(){
+  try{ data=await api('/api/reviews'); }catch(e){ $('#repos').innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  // A new head or a finished review replaces what the open detail shows.
+  if(open){ const [rid,n]=open.split('#'); const repo=data.repos.find(r=>r.id===rid); const p=repo&&repo.prs.find(x=>x.pr===Number(n));
+    const d=details[open]; const stale=p&&p.review&&(!d||(d.record&&(d.record.sha!==p.sha||d.record.finishedAt!==p.review.finishedAt)));
+    if(stale) await loadDetail(rid,p); }
+  if(document.activeElement&&document.activeElement.tagName==='TEXTAREA') return; // do not re-render under typing
+  render();
+}
+refresh(); setInterval(refresh,5000);
+</script>

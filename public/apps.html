@@ -1,0 +1,149 @@
+<!doctype html><meta charset="utf-8"><title>Apps</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--surface:#12171f;--surface3:#1b2430;--line:#212b38;--line2:#2c3a4b;
+    --text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;--accent:#6d8bff;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(720px 420px at 12% -10%,#6d8bff12,transparent 70%)}
+  .wrap{position:relative;max-width:980px;margin:0 auto;padding:30px 30px 90px}
+  h1{font-size:22px;font-weight:720;letter-spacing:-.02em;margin:0 0 3px;display:flex;align-items:center;gap:11px}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+  .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;color:var(--dim);font-size:12.5px}
+  .bar b{color:var(--text);font-weight:640}
+  .bar .grow{flex:1}
+  .bar input{background:#080b0f;border:1px solid var(--line2);color:var(--text);padding:6px 10px;font:12.5px inherit;min-width:220px}
+  .src{display:inline-flex;align-items:center;gap:4px}
+  .src button{padding:0 6px;font-size:11px;line-height:18px}
+  code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d6e2;background:#080b0f;border:1px solid var(--line);padding:1px 6px}
+  .banner{padding:13px 16px;margin-bottom:16px;background:linear-gradient(180deg,#2a1414,#1a1010);border:1px solid #7c2a2a;border-left:3px solid var(--bad);font-size:12.5px;color:#fca5a5}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+  .card{background:var(--surface);border:1px solid var(--line);padding:15px 17px;display:flex;flex-direction:column;gap:9px;min-width:0}
+  .top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .nm{font-weight:660;font-size:15px}
+  .repo{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint);text-decoration:none}
+  .repo:hover{color:var(--dim)}
+  .desc{color:var(--dim);font-size:12.5px}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border:1px solid}
+  .pill.ok{color:#86efac;border-color:#1f6f52;background:#0c1f17}
+  .pill.new{color:#fcd34d;border-color:#7a5a12;background:#1f170a}
+  .pill.dim{color:var(--dim);border-color:var(--line2);background:var(--surface3)}
+  .pill.bad{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .why{color:#fca5a5;font-size:12px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  button{border:1px solid var(--line2);background:var(--surface3);color:var(--text);padding:6px 12px;font:600 12px inherit;cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--faint)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#0a0d12}
+  button.danger{color:#fca5a5}
+  button:disabled{opacity:.5;cursor:default}
+  .plan{background:#080b0f;border:1px solid var(--line);padding:9px 11px;font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d6e2;white-space:pre-wrap;word-break:break-all}
+  .packs{border-top:1px solid var(--line);padding-top:9px;display:flex;flex-direction:column;gap:8px}
+  .packs .lbl{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-weight:640}
+  .pack{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
+  .pack .pt{font-weight:600}
+  .pack .grow{flex:1}
+  .empty{color:var(--faint);font-size:12.5px;padding:24px 4px;text-align:center;background:var(--surface);border:1px solid var(--line)}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;max-width:90vw;
+    background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s;pointer-events:none;white-space:pre-wrap}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <h1><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#0f1526"/><rect x="7" y="7" width="8" height="8" fill="#6d8bff"/><rect x="17" y="7" width="8" height="8" fill="#5a6b8f"/><rect x="7" y="17" width="8" height="8" fill="#5a6b8f"/><path d="M21 17v8M17 21h8" stroke="#34d399" stroke-width="2.2"/></svg> Apps</h1>
+  <p class="sub">Tools that live in their own GitHub repos, tagged <code>deck-app</code> on the accounts Deck watches. Install them here, and update them when their author pushes something new.</p>
+  <div class="bar"><span id="sources">loading</span><span class="grow"></span><span id="checked"></span><button id="refresh">Refresh</button></div>
+  <div class="bar"><input id="owner" placeholder="GitHub owner, e.g. zlexo" spellcheck="false" autocomplete="off"><button id="watch">Watch</button></div>
+  <div id="errors"></div>
+  <div class="grid" id="apps"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(u,o){const r=await fetch(u,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'failed');return j}
+const post=(u,b)=>api(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)});
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),3200)}
+let data=null, armed={}, working={};
+
+function statusPill(a){
+  if(a.status==='installed') return a.updateAvailable?`<span class="pill new">update: ${esc(a.latest)}</span>`:`<span class="pill ok">installed ${esc(a.version||'')}</span>`;
+  if(a.status==='dev') return `<span class="pill dim">your checkout</span>`;
+  if(a.status==='unusable') return `<span class="pill bad">can't install</span>`;
+  if(a.status==='taken') return `<span class="pill bad">id in use</span>`;
+  return a.latest?`<span class="pill dim">${esc(a.latest)}</span>`:'';
+}
+function actions(a){
+  const id=a.id, busy=working[id];
+  if(a.status==='unusable'||a.status==='taken') return `<div class="why">${esc(a.problem)}</div>`;
+  if(a.status==='dev') return `<div class="desc">Deck runs your checkout at <code>${esc(a.dir)}</code> and installs no second copy.</div>`;
+  if(a.status==='available'){
+    if(armed[id]==='install') return `<div class="desc">Installing runs, in Deck's apps folder:</div><div class="plan">${a.plan.map(c=>'$ '+esc(c.join(' '))).join('\n')}</div>
+      <div class="acts"><button class="primary" data-do="install" data-id="${esc(id)}" ${busy?'disabled':''}>${busy?'Installing…':'Confirm install'}</button><button data-cancel="${esc(id)}">Cancel</button></div>`;
+    return `<div class="acts"><button class="primary" data-arm="install" data-id="${esc(id)}">Install</button></div>`;
+  }
+  const upd=a.updateAvailable?(armed[id]==='update'
+      ?`<button class="primary" data-do="update" data-id="${esc(id)}" ${busy?'disabled':''}>${busy?'Updating…':'Confirm update to '+esc(a.latest)}</button>`
+      :`<button class="primary" data-arm="update" data-id="${esc(id)}">Update</button>`):'';
+  const rm=armed[id]==='remove'
+      ?`<button class="danger" data-do="remove" data-id="${esc(id)}" ${busy?'disabled':''}>${busy?'Removing…':'Confirm remove'}</button><button data-cancel="${esc(id)}">Cancel</button>`
+      :`<button class="danger" data-arm="remove" data-id="${esc(id)}">Remove</button>`;
+  return `<div class="desc">In <code>${esc(a.dir)}</code>; it runs from your home grid like any tool.</div><div class="acts">${upd}${rm}</div>`;
+}
+// A pack's row: title, status, and its own two-click buttons (key app/pack).
+function packRow(a,p){
+  const k=a.id+'/'+p.id, busy=working[k];
+  const pill=p.status==='installed'?(p.updateAvailable?`<span class="pill new">update: ${esc(p.latest)}</span>`:`<span class="pill ok">installed ${esc(p.version||'')}</span>`)
+    :p.status==='unusable'?`<span class="pill bad">can't install</span>`:(p.latest?`<span class="pill dim">${esc(p.latest)}</span>`:'');
+  const btn=(what,label,cls)=>armed[k]===what
+    ?`<button class="${cls}" data-pdo="${what}" data-app="${esc(a.id)}" data-pack="${esc(p.id)}" ${busy?'disabled':''}>${busy?'Working…':'Confirm '+label.toLowerCase()}</button><button data-cancel="${esc(k)}">Cancel</button>`
+    :`<button class="${cls}" data-parm="${what}" data-key="${esc(k)}">${label}</button>`;
+  const acts=p.status==='available'?btn('install','Install','primary'):p.status==='installed'?(p.updateAvailable?btn('update','Update','primary'):'')+btn('remove','Remove','danger'):`<span class="why">${esc(p.problem)}</span>`;
+  return `<div class="pack"><span class="pt">${esc(p.title)}</span>${p.private?'<span class="pill dim">private</span>':''}${pill}<span class="grow"></span>${acts}</div>`;
+}
+function packsOf(a){
+  if(!a.packs||(a.status!=='installed'&&a.status!=='dev')) return '';
+  const list=a.packList||[];
+  return `<div class="packs"><span class="lbl">Packs</span>${list.length?list.map(p=>packRow(a,p)).join(''):`<span class="desc">No repo tagged <code>${esc(a.packs)}</code> yet.</span>`}</div>`;
+}
+function render(){
+  if(!data) return;
+  $('#sources').innerHTML=data.sources.length?`Watching ${data.sources.map(o=>`<span class="src"><b>${esc(o)}</b><button data-unwatch="${esc(o)}" title="stop watching">×</button></span>`).join(' ')}`
+    :`No accounts watched yet: add a GitHub owner below.`;
+  $('#checked').textContent=data.checkedAt?'checked '+new Date(data.checkedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+  $('#errors').innerHTML=(data.errors||[]).map(e=>`<div class="banner">${esc(e)}</div>`).join('');
+  const list=data.apps||[];
+  $('#apps').innerHTML=list.length?list.map(a=>`<div class="card">
+      <div class="top"><span class="nm">${esc(a.name)}</span>${a.private?'<span class="pill dim">private</span>':''}${statusPill(a)}</div>
+      <a class="repo" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.repo)}</a>
+      ${a.description?`<div class="desc">${esc(a.description)}</div>`:''}
+      ${actions(a)}${packsOf(a)}</div>`).join('')
+    :`<div class="empty">${data.sources.length?'No repo tagged deck-app on these accounts yet.':'Nothing to list until an account is watched.'}</div>`;
+}
+async function load(refresh){
+  try{ data=await api('/api/apps'+(refresh?'?refresh=1':'')); render(); }
+  catch(e){ $('#apps').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+}
+$('#owner').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#watch').click(); });
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='refresh') return load(true);
+  if(b.id==='watch'){ const o=$('#owner').value.trim(); if(!o) return; try{ await post('/api/apps/sources',{add:o}); $('#owner').value=''; }catch(err){ return toast(err.message); } return load(true); }
+  if(b.dataset.unwatch){ try{ await post('/api/apps/sources',{remove:b.dataset.unwatch}); }catch(err){ return toast(err.message); } return load(true); }
+  if(b.dataset.cancel){ delete armed[b.dataset.cancel]; return render(); }
+  if(b.dataset.parm){ armed={[b.dataset.key]:b.dataset.parm}; return render(); }
+  if(b.dataset.pdo){
+    const app=b.dataset.app, id=b.dataset.pack, k=app+'/'+id, what=b.dataset.pdo; working[k]=true; render();
+    try{ const r=await post('/api/apps/packs/'+what,{app,id}); toast(what==='remove'?`${id} removed`:`${id} ${what==='install'?'installed':'updated'}: ${r.version&&(r.version.tag||r.version.sha.slice(0,7))}`); }
+    catch(err){ toast(err.message); }
+    delete working[k]; delete armed[k]; return load(false);
+  }
+  if(b.dataset.arm){ armed={[b.dataset.id]:b.dataset.arm}; setTimeout(()=>{ if(armed[b.dataset.id]===b.dataset.arm&&!working[b.dataset.id]){ delete armed[b.dataset.id]; render(); } },15000); return render(); }
+  if(b.dataset.do){
+    const id=b.dataset.id, what=b.dataset.do; working[id]=true; render();
+    try{ const r=await post('/api/apps/'+what,{id}); toast(what==='remove'?`${id} removed`:`${id} ${what==='install'?'installed':'updated'}: ${r.version&&(r.version.tag||r.version.sha.slice(0,7))}`); }
+    catch(err){ toast(err.message); }
+    delete working[id]; delete armed[id]; load(false);
+  }
+});
+load(false);
+</script>

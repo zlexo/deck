@@ -1,0 +1,12 @@
+{
+  "id": "ticker",
+  "name": "Ticker",
+  "group": "Examples",
+  "description": "Prints the time every second, so the log tail has something to show.",
+  "cwd": "{deck}/examples",
+  "cmd": [
+    "node",
+    "-e",
+    "setInterval(() => console.log(new Date().toISOString()), 1000)"
+  ]
+}

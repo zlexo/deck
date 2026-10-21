@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The deck dashboard and the chrome tab bar (both served from :8800) may invoke the shell's tab commands and receive the tabs:changed event. The pooled tool webviews get NO IPC — they're plain embedded pages.",
+  "windows": ["main"],
+  "webviews": ["deck", "chrome"],
+  "remote": { "urls": ["http://localhost:8800"] },
+  "permissions": [
+    "core:default",
+    "allow-open-tool",
+    "allow-close-tool",
+    "allow-activate",
+    "allow-get-tabs"
+  ]
+}

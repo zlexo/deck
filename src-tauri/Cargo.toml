@@ -1,0 +1,22 @@
+[package]
+name = "deck"
+version = "0.1.0"
+description = "Deck: the native shell of a local control panel for dev tools"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# `unstable` = multi-webview (two webviews in one window: deck rail + tool pane)
+tauri = { version = "2", features = ["unstable"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# getpgid, kill and proc_pidpath for stopping the gateway on quit (already in the tree via tauri)
+libc = "0.2"
+# applicationShouldTerminate:, so a quit hides the window first (already in the tree via tauri)
+objc2 = "0.6"
+
+[profile.release]
+strip = true
+lto = true

@@ -1,0 +1,28 @@
+{
+  "id": "hello",
+  "name": "Hello server",
+  "group": "Examples",
+  "description": "A tiny web server. Start it, open it, watch requests arrive in its log, change its port or its greeting.",
+  "cwd": "{deck}/examples/hello",
+  "cmd": [
+    "node",
+    "server.js"
+  ],
+  "url": "http://localhost:{port}",
+  "portKey": "port",
+  "config": {
+    "port": {
+      "type": "number",
+      "flag": "--port",
+      "default": 8899
+    },
+    "greeting": {
+      "type": "string",
+      "env": "GREETING",
+      "default": "Hello from Deck"
+    }
+  },
+  "paths": {
+    "Example folder": "{deck}/examples/hello"
+  }
+}

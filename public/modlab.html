@@ -1,0 +1,281 @@
+<!doctype html><meta charset="utf-8"><title>Mod Lab</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface2:#161d27;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --accent:#f472b6;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--pc:#f472b6}
+  *{box-sizing:border-box}
+  body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(720px 420px at 12% -10%, color-mix(in srgb, var(--pc) 10%, transparent), transparent 70%)}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:30px 30px 90px}
+  h1{font-size:22px;font-weight:720;letter-spacing:-.02em;margin:0 0 3px;display:flex;align-items:center;gap:11px}
+  .glyph{width:30px;height:30px}
+  .sub{color:var(--dim);font-size:12.5px;margin:0 0 20px}
+  .lbl{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.13em;font-weight:640;margin:22px 0 10px;display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent);order:2}
+  .lbl .tail{order:3;text-transform:none;letter-spacing:0;font-weight:500;font-size:12px}
+  .lbl .act{order:4;text-transform:none;letter-spacing:0}
+  .panel{background:var(--surface);border:1px solid var(--line)}
+  button{border:1px solid var(--line2);background:var(--surface3);color:var(--text);padding:6px 12px;font:600 12px inherit;cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--faint)}
+  button.primary{background:var(--pc);border-color:var(--pc);color:#1d0614}
+  button.primary:hover{filter:brightness(1.08)}
+  button.big{padding:10px 20px;font-size:13.5px}
+  button.arm{background:#3a1515;border-color:var(--bad);color:#fecaca}
+  button[disabled]{opacity:.45;cursor:default}
+  /* benches */
+  .benches{display:flex;gap:8px;flex-wrap:wrap}
+  .bench{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border:1px solid var(--line);background:var(--bg2);cursor:pointer;transition:.14s}
+  .bench:hover{border-color:var(--line2)}
+  .bench.sel{border-color:var(--pc);background:var(--surface)}
+  .bench .bi{width:28px;height:28px;overflow:hidden;flex:none}
+  .bench .bi svg{width:100%;height:100%;display:block}
+  .bench .bn{font-weight:640;font-size:13px}
+  .bench .bs{font-size:11px;color:var(--faint)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);display:inline-block;flex:none}
+  .dot.passed{background:var(--ok)}.dot.failed,.dot.error{background:var(--bad)}.dot.running{background:var(--warn);animation:pulse 1.2s infinite}.dot.stopped{background:var(--faint)}
+  @keyframes pulse{50%{opacity:.25}}
+  /* bench head */
+  .bhead{display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}
+  .bhead .t{font-size:18px;font-weight:700}
+  .bhead .spacer{flex:1}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-size:11.5px;padding:4px 10px;border:1px solid var(--line2);color:var(--faint);cursor:pointer;user-select:none;transition:.12s}
+  .chip.on{color:var(--text);border-color:var(--pc);background:color-mix(in srgb, var(--pc) 12%, transparent)}
+  .refuse{margin-top:12px;padding:10px 14px;border:1px solid #6f5c1f;border-left:3px solid var(--warn);background:#1d190d;color:#fcd38a;font-size:12.5px}
+  .cols{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:22px;align-items:start}
+  @media(max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+  /* run */
+  .runh{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .runh .rid{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim)}
+  .runh .rt{margin-left:auto;color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border:1px solid var(--line2);color:var(--faint)}
+  .st.passed{color:#86efac;border-color:#1f6f52;background:#0c1f17}
+  .st.failed,.st.error{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .st.running{color:#fcd38a;border-color:#6f5c1f;background:#211c0d}
+  .steps{padding:8px 0}
+  .step{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:start;padding:6px 16px;cursor:pointer}
+  .step:hover{background:#0f151d}
+  .ic{width:16px;height:16px;margin-top:2px;display:grid;place-items:center;font-size:11px;font-weight:800}
+  .ic.passed{color:var(--ok)}.ic.failed{color:var(--bad)}.ic.running{color:var(--warn)}.ic.pending,.ic.skipped{color:var(--faint)}
+  .spin{width:12px;height:12px;border:2px solid #6f5c1f;border-top-color:var(--warn);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .step .sl{font-size:13px;color:var(--text)} .step .sd{font-size:11.5px;color:var(--faint);margin-top:1px;word-break:break-word}
+  .step .sdur{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .step.skipped .sl,.step.pending .sl{color:var(--faint)}
+  .scen{border-top:1px solid var(--line)}
+  .scen .sh{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer}
+  .scen .sh:hover{background:#0f151d}
+  .scen .sn{font-weight:640;font-size:13px}
+  .scen .sf{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--faint)}
+  .scen .sdur{margin-left:auto;font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .scen .ss{padding:0 0 8px 26px}
+  .ev{margin:4px 16px 8px 48px;font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a9b8c6;background:#06090d;border:1px solid var(--line);padding:8px 10px;white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto}
+  .ev .m{color:#86efac}
+  .ev.err{color:#fca5a5}
+  .shot{margin:6px 16px 10px 48px;max-width:calc(100% - 64px);border:1px solid var(--line2);display:block;cursor:zoom-in}
+  .log{margin:2px 16px 10px 48px;font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a9b8c6;background:#06090d;border:1px solid var(--line);padding:8px 10px;max-height:300px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+  .crash{margin:12px 16px;border:1px solid #7c2a2a;background:#160c0c}
+  .crash .ch{padding:10px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #3a1818}
+  .crash .ch b{color:#fca5a5;font-size:13px}
+  .crash .cb{padding:10px 12px;font-size:12.5px;color:var(--dim)}
+  .crash .cb .k{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .crash pre{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#e2e8f0;background:#06090d;padding:8px 10px;margin:6px 0 0;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto}
+  .explain{margin-top:10px;padding:10px 12px;border-left:3px solid var(--pc);background:var(--surface);color:var(--text);font-size:13px;line-height:1.6;white-space:pre-wrap}
+  /* scenarios + editor */
+  .sitem{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #131a24;cursor:pointer}
+  .sitem:hover,.sitem.open{background:#0f151d}
+  .sitem .n{font-size:13px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .need{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line2);padding:1px 6px}
+  .need.bridge,.need.client{color:#fcd38a;border-color:#6f5c1f}
+  .editor{padding:10px 14px 14px;border-bottom:1px solid var(--line);background:#0c1118}
+  textarea.code{width:100%;min-height:220px;background:#06090d;border:1px solid var(--line2);color:#e2e8f0;padding:10px 12px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;tab-size:2}
+  textarea.code:focus,textarea.ask:focus,input.fname:focus{outline:0;border-color:var(--pc)}
+  textarea.ask{width:100%;min-height:58px;background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:9px 11px;font:13px inherit;resize:vertical}
+  input.fname{background:#0b1117;border:1px solid var(--line2);color:var(--text);padding:6px 9px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;width:220px}
+  .erow{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .perr{color:#fca5a5;font-size:12px;margin-top:6px;white-space:pre-wrap}
+  .hint{color:var(--faint);font-size:11.5px}
+  .hrow{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #131a24;cursor:pointer;font-size:12.5px}
+  .hrow:hover,.hrow.sel{background:#0f151d}
+  .hrow .w{color:var(--dim);flex:1}
+  .hrow .c{color:var(--faint);font-variant-numeric:tabular-nums}
+  .empty{color:var(--faint);font-size:12.5px;padding:14px}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="wrap">
+  <h1><span class="glyph"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#1d0a15"/>
+    <path d="M12 6h8M13.5 6v7.5L7.5 24.5a1.6 1.6 0 0 0 1.4 2.4h14.2a1.6 1.6 0 0 0 1.4-2.4L18.5 13.5V6" stroke="#f472b6" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M10.4 20h11.2" stroke="#f472b6" stroke-width="2"/></svg></span> Mod Lab</h1>
+  <p class="sub">One click from source to a tested server: build, start, run the saved scenarios, and catch the crash. Every run is kept with the commits it ran.</p>
+  <div class="benches" id="benches"></div>
+  <div id="bench"><div class="empty">loading</div></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+const send=(m,u,b)=>api(u,{method:m,headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600)}
+const dur=ms=>{ if(ms==null) return ''; const s=Math.round(ms/1000); return s<60?s+'s':Math.floor(s/60)+'m '+String(s%60).padStart(2,'0')+'s'; };
+const when=ts=>{ if(!ts) return ''; const d=new Date(ts), now=new Date(); const t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); return d.toDateString()===now.toDateString()?t:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+t; };
+const ICON={passed:'&#10003;',failed:'&#10005;',error:'&#10005;',skipped:'&#8211;',pending:'&#183;',stopped:'&#9632;'};
+const icon=s=>s==='running'?'<span class="ic running"><span class="spin"></span></span>':`<span class="ic ${esc(s)}">${ICON[s]||'&#183;'}</span>`;
+
+const params=new URLSearchParams(location.search);
+let list=null, P=params.get('p'), bench=null, run=null, viewRun=null /* id pinned from history */, picked=null,
+    openStep=null, openScen={}, stepLogs={}, openFile=null, edits={}, parseErr={}, ask='', draft=null, draftName='', explain={}, armed=null;
+
+function benchTabs(){
+  $('#benches').innerHTML=list.benches.map(b=>`<div class="bench ${b.project===P?'sel':''}" onclick="pickBench('${b.project}')" style="--pc:${b.color||'#f472b6'}">
+    <span class="bi">${b.iconSvg||''}</span><span><div class="bn">${esc(b.name)}</div><div class="bs"><span class="dot ${b.running?'running':esc(b.lastRun&&b.lastRun.status||'')}"></span> ${b.running?'running':b.lastRun?esc(b.lastRun.status)+' '+when(b.lastRun.finishedAt||b.lastRun.startedAt):'no runs yet'} · ${b.scenarios} scenario${b.scenarios===1?'':'s'}</div></span></div>`).join('')
+    ||'<div class="empty">No project has a Mod Lab bench yet. A bench is a modlab block in projects/&lt;id&gt;.json.</div>';
+}
+function pickBench(id){ P=id; history.replaceState(null,'','?p='+encodeURIComponent(id)); bench=null; run=null; viewRun=null; picked=null; openFile=null; load(); }
+
+function stepRow(s,i,r){
+  const open=openStep===i;
+  return `<div class="step ${esc(s.status)}" onclick="toggleStep(${i})">${icon(s.status)}<span><div class="sl">${esc(s.label||s.kind)}</div>${s.detail?`<div class="sd">${esc(s.detail)}</div>`:''}</span><span class="sdur">${s.status==='running'?dur(Date.now()-(s.startedAt||Date.now())):dur(s.durationMs)}</span></div>
+    ${open?`<div class="log" id="steplog">${stepLogs[r.id+':'+i]?stepLogs[r.id+':'+i].map(esc).join('\n')||'(empty)':'loading log'}</div>`:''}`;
+}
+function evidence(st,r){
+  const e=st.evidence||{}, out=[];
+  if(e.matched) out.push(`<div class="ev">matched <span class="m">${esc(e.matched)}</span></div>`);
+  if(st.error) out.push(`<div class="ev err">${esc(st.error)}</div>`);
+  if(e.state&&Object.keys(e.state).length) out.push(`<div class="ev">${esc(JSON.stringify(e.state,null,2))}</div>`);
+  if(e.lines&&e.lines.length) out.push(`<div class="ev">${esc(e.lines.join('\n'))}</div>`);
+  if(e.screenshot){ const src=`/api/modlab/${encodeURIComponent(r.project)}/runs/${encodeURIComponent(r.id)}/files/${encodeURIComponent(e.screenshot.split('/').pop())}`;
+    out.push(`<a href="${src}" target="_blank"><img class="shot" src="${src}" alt="${esc(st.text)}"></a>`); }
+  return out.join('');
+}
+function scenBlock(sc,r){
+  const key=r.id+':'+sc.file, open=openScen[key]??(sc.status==='failed'||sc.status==='running');
+  return `<div class="scen"><div class="sh" onclick="openScen['${esc(key)}']=${!open};render()">${icon(sc.status)}<span><div class="sn">${esc(sc.name)}</div><div class="sf">${esc(sc.file)}</div></span><span class="sdur">${dur(sc.durationMs)}</span></div>
+    ${open?`<div class="ss">${(sc.steps||[]).map(st=>`<div class="step ${esc(st.status)}" style="cursor:default">${icon(st.status)}<span><div class="sl mono" style="font:12px ui-monospace,SFMono-Regular,Menlo,monospace">${esc(st.text)}</div></span><span class="sdur">${dur(st.durationMs)}</span></div>${st.status==='failed'||st.evidence?evidence(st,r):''}`).join('')}
+      ${sc.error&&!(sc.steps||[]).some(s=>s.error)?`<div class="ev err">${esc(sc.error)}</div>`:''}</div>`:''}</div>`;
+}
+function crashCard(c,i,r){
+  const k=r.id+':'+i, ex=explain[k];
+  return `<div class="crash"><div class="ch"><b>Crash</b><span style="color:var(--faint);font-size:12px">${esc(c.source)} · ${when(c.ts)}</span><span style="margin-left:auto"></span>
+    <button onclick="explainCrash('${esc(r.id)}',${i})" ${ex&&ex.loading?'disabled':''}>${ex&&ex.loading?'Asking Claude…':'Explain'}</button></div>
+    <div class="cb">${c.causedBy?`<div class="k">First cause</div><pre>${esc(c.causedBy)}</pre>`:''}${c.frame?`<div class="k" style="margin-top:8px">In our code</div><pre>${esc(c.frame)}</pre>`:''}
+      ${c.excerpt?`<div class="k" style="margin-top:8px">Excerpt</div><pre>${esc(c.excerpt)}</pre>`:''}
+      ${ex&&ex.text?`<div class="explain">${esc(ex.text)}</div><div class="hint" style="margin-top:4px">$${(ex.costUsd||0).toFixed(3)}</div>`:''}${ex&&ex.error?`<div class="perr">${esc(ex.error)}</div>`:''}</div></div>`;
+}
+function runPanel(){
+  const r=viewRun&&viewRun.id!==(bench.running&&bench.running.id)?viewRun:run;
+  if(!r) return `<div class="panel"><div class="empty">No run yet. Test run builds the mod, starts its server, runs the scenarios, and stops everything again.</div></div>`;
+  const counts=(r.scenarios||[]).reduce((a,s)=>(a[s.status]=(a[s.status]||0)+1,a),{});
+  const commits=Object.entries(r.commits||{}).map(([k,v])=>`${k.split('/').pop()} ${String(v).slice(0,7)}`).join('\n');
+  return `<div class="panel"><div class="runh"><span class="st ${esc(r.status)}">${esc(r.status)}</span><span class="rid" title="${esc(commits)}">${esc(r.id)}</span>
+    <span class="hint">${counts.passed||0} passed${counts.failed?` · ${counts.failed} failed`:''}${counts.skipped?` · ${counts.skipped} skipped`:''}</span>
+    <span class="rt">${r.status==='running'?dur(Date.now()-r.startedAt):dur(r.durationMs)}</span></div>
+    <div class="steps">${(r.steps||[]).map((s,i)=>stepRow(s,i,r)).join('')}</div>
+    ${(r.crashes||[]).map((c,i)=>crashCard(c,i,r)).join('')}
+    ${(r.scenarios||[]).map(sc=>scenBlock(sc,r)).join('')}</div>`;
+}
+function scenPanel(){
+  const items=(bench.scenarios||[]).map(sc=>{
+    const open=openFile===sc.file, text=edits[sc.file]??sc.text;
+    return `<div class="sitem ${open?'open':''}" onclick="toggleFile('${esc(sc.file)}')"><span class="n" title="${esc(sc.file)}">${esc(sc.name||sc.file)}</span>${(sc.needs||[]).map(n=>`<span class="need ${esc(typeof n==='string'?n:'')}">${esc(typeof n==='string'?n:'players '+n.players)}</span>`).join('')}${sc.error?'<span class="need" style="color:#fca5a5;border-color:#7c2a2a">invalid</span>':''}</div>
+      ${open?`<div class="editor"><textarea class="code" spellcheck="false" oninput="edits['${esc(sc.file)}']=this.value">${esc(text)}</textarea>
+        ${parseErr[sc.file]||sc.error?`<div class="perr">${esc(parseErr[sc.file]||sc.error)}</div>`:''}
+        <div class="erow"><button onclick="saveFile('${esc(sc.file)}')" ${edits[sc.file]==null?'disabled':''}>Save</button><span class="hint">${esc(sc.file)} in the mod's repo</span></div></div>`:''}`;
+  }).join('');
+  return `<div class="lbl">Scenarios<span class="tail">${(bench.scenarios||[]).length}</span></div>
+    <div class="panel">${items||'<div class="empty">No scenarios yet.</div>'}
+      <div class="editor" style="border-bottom:0"><div class="hint" style="margin-bottom:6px">New scenario from a sentence</div>
+        <textarea class="ask" placeholder="start block shuffle for one minute and check a round ends" oninput="ask=this.value">${esc(ask)}</textarea>
+        <div class="erow"><button class="primary" onclick="draftScenario()" ${draft&&draft.loading?'disabled':''}>${draft&&draft.loading?'Drafting…':'Draft with Claude'}</button><span class="hint">Read it, edit it, then save it.</span></div>
+        ${draft&&draft.error?`<div class="perr">${esc(draft.error)}</div>`:''}
+        ${draft&&draft.yaml!=null?`<textarea class="code" style="margin-top:10px" spellcheck="false" oninput="draft.yaml=this.value">${esc(draft.yaml)}</textarea>
+          ${draft.parseError?`<div class="perr">${esc(draft.parseError)}</div>`:''}
+          <div class="erow"><input class="fname" placeholder="file name, e.g. round-ends.yaml" value="${esc(draftName)}" oninput="draftName=this.value"><button onclick="saveDraft()">Save scenario</button>${draft.costUsd!=null?`<span class="hint">$${draft.costUsd.toFixed(3)}</span>`:''}</div>`:''}
+      </div></div>
+    <div class="lbl">History<span class="tail">${(bench.history||[]).length}</span></div>
+    <div class="panel">${(bench.history||[]).map(h=>{ const shown=(viewRun&&viewRun.id===h.id)||(!viewRun&&run&&run.id===h.id);
+      return `<div class="hrow ${shown?'sel':''}" onclick="showRun('${esc(h.id)}')"><span class="dot ${esc(h.status)}"></span><span class="w">${when(h.startedAt)}</span><span class="c">${h.passed!=null?`${h.passed}/${(h.passed||0)+(h.failed||0)}`:''} ${dur(h.durationMs)}</span></div>`; }).join('')||'<div class="empty">No runs yet.</div>'}</div>`;
+}
+function render(){
+  if(!list) return;
+  benchTabs();
+  if(!P||!bench){ $('#bench').innerHTML=P?'<div class="empty">loading</div>':''; return; }
+  const all=(bench.scenarios||[]).map(s=>s.file);
+  if(picked==null) picked=new Set(all.filter(f=>!(bench.scenarios.find(s=>s.file===f).error)));
+  const live=!!bench.running;
+  document.documentElement.style.setProperty('--pc',(list.benches.find(b=>b.project===P)||{}).color||'#f472b6');
+  $('#bench').innerHTML=`<div class="bhead"><span class="t">${esc((list.benches.find(b=>b.project===P)||{}).name||P)}</span><span class="spacer"></span>
+      ${live?`<button class="${armed==='stop'?'arm':''}" onclick="stopRun()">${armed==='stop'?'Sure? Stop the run':'Stop'}</button>`:''}
+      <button class="primary big" onclick="startRun()" ${live||!picked.size?'disabled':''}>${live?'Running…':'Test run'}</button></div>
+    <div class="chips">${(bench.scenarios||[]).map(s=>`<span class="chip ${picked.has(s.file)?'on':''}" onclick="pickScen('${esc(s.file)}')" title="${esc(s.file)}">${esc(s.name||s.file)}</span>`).join('')}</div>
+    ${bench.refusal?`<div class="refuse">${esc(bench.refusal)}</div>`:''}
+    <div class="cols"><div><div class="lbl">${viewRun&&!live?'Run from history':live?'This run':'Last run'}</div>${runPanel()}</div><div>${scenPanel()}</div></div>`;
+  const lg=document.getElementById('steplog'); if(lg) lg.scrollTop=lg.scrollHeight;
+}
+function pickScen(f){ picked.has(f)?picked.delete(f):picked.add(f); render(); }
+async function toggleStep(i){
+  const r=viewRun||run; if(!r) return;
+  openStep=openStep===i?null:i; render();
+  if(openStep!=null) await loadStepLog(r,i);
+}
+async function loadStepLog(r,i){
+  try{ stepLogs[r.id+':'+i]=(await api(`/api/modlab/${encodeURIComponent(P)}/runs/${encodeURIComponent(r.id)}/log?step=${i}&lines=200`)).lines; }
+  catch(e){ stepLogs[r.id+':'+i]=['(no log: '+e.message+')']; }
+  render();
+}
+function toggleFile(f){ openFile=openFile===f?null:f; render(); }
+async function saveFile(f){
+  try{ await send('PUT',`/api/modlab/${encodeURIComponent(P)}/scenarios/${encodeURIComponent(f)}`,{yaml:edits[f]}); delete edits[f]; delete parseErr[f]; toast('saved '+f); load(); }
+  catch(e){ parseErr[f]=e.message; render(); }
+}
+async function draftScenario(){
+  if(!ask.trim()) return toast('describe the test first');
+  draft={loading:true}; render();
+  try{ const r=await send('POST',`/api/modlab/${encodeURIComponent(P)}/scenarios/draft`,{sentence:ask}); draft={yaml:r.yaml,costUsd:r.costUsd,parseError:r.error||null};
+    if(!draftName){ const m=/^name:\s*(.+)$/m.exec(r.yaml||''); if(m) draftName=m[1].toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)+'.yaml'; } }
+  catch(e){ draft={error:e.message}; }
+  render();
+}
+async function saveDraft(){
+  const f=(draftName||'').trim(); if(!/^[a-z0-9][a-z0-9._-]*\.ya?ml$/i.test(f)) return toast('a file name ending in .yaml');
+  try{ await send('PUT',`/api/modlab/${encodeURIComponent(P)}/scenarios/${encodeURIComponent(f)}`,{yaml:draft.yaml}); toast('saved '+f); draft=null; draftName=''; ask=''; picked=null; load(); }
+  catch(e){ draft.parseError=e.message; render(); }
+}
+async function startRun(){
+  try{ const r=await send('POST',`/api/modlab/${encodeURIComponent(P)}/run`,{scenarios:[...picked]}); bench.refusal=null; viewRun=null; toast('run '+r.runId+' started'); load(); }
+  catch(e){ bench.refusal=e.message; render(); }
+}
+async function stopRun(){
+  if(armed!=='stop'){ armed='stop'; setTimeout(()=>{ armed=null; render(); },4000); return render(); }
+  armed=null;
+  try{ await send('POST',`/api/modlab/${encodeURIComponent(P)}/stop`); toast('stopping'); load(); }catch(e){ toast(e.message); }
+}
+async function explainCrash(runId,i){
+  const k=runId+':'+i; explain[k]={loading:true}; render();
+  try{ const r=await send('POST',`/api/modlab/${encodeURIComponent(P)}/crashes/explain`,{runId,index:i}); explain[k]={text:r.text,costUsd:r.costUsd}; }
+  catch(e){ explain[k]={error:e.message}; }
+  render();
+}
+async function showRun(id){
+  try{ viewRun=await api(`/api/modlab/${encodeURIComponent(P)}/runs/${encodeURIComponent(id)}`); openStep=null; render(); }catch(e){ toast(e.message); }
+}
+async function load(){
+  try{ list=await api('/api/modlab'); }catch(e){ $('#bench').innerHTML=`<div class="empty">${esc(e.message)}</div>`; return; }
+  if(!P&&list.benches.length) P=list.benches[0].project;
+  if(P){
+    try{
+      const refusal=bench&&bench.refusal;
+      bench=await api('/api/modlab/'+encodeURIComponent(P)); bench.refusal=refusal;
+      const id=(bench.running&&bench.running.id)||(bench.history&&bench.history[0]&&bench.history[0].id);
+      run=id?await api(`/api/modlab/${encodeURIComponent(P)}/runs/${encodeURIComponent(id)}`):null;
+      if(run&&run.status==='running'&&openStep!=null) await loadStepLog(run,openStep);
+    }catch(e){ bench={scenarios:[],history:[],refusal:e.message}; }
+  }
+  const typing=document.activeElement&&(document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='INPUT');
+  if(!typing) render();
+}
+load(); setInterval(load,2000);
+</script>

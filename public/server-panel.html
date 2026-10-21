@@ -1,0 +1,108 @@
+<!doctype html><meta charset="utf-8"><title>Server</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{color-scheme:dark;--bg:#0a0d12;--surface:#12171f;--surface3:#1b2430;
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;
+    --live:#34d399;--ext:#fbbf24;--danger:#f87171;--pc:#6d8bff}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font:14px/1.5 -apple-system,system-ui,sans-serif;color:var(--text);background:var(--bg);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;height:100vh}
+  .top{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);background:#0d1117}
+  .picon{width:40px;height:40px;flex:none;border:1px solid var(--line2);overflow:hidden}
+  .picon svg{width:100%;height:100%;display:block}
+  .tt h1{font-size:17px;font-weight:680;margin:0;display:flex;align-items:center;gap:10px}
+  .tt .sub{color:var(--faint);font-size:12px;margin:2px 0 0;font-family:ui-monospace,Menlo,monospace}
+  .state{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;padding:4px 11px;border:1px solid var(--line2);color:var(--faint)}
+  .state.on{color:var(--live);border-color:#1f6f52}.state.on .d{background:var(--live);box-shadow:0 0 7px #34d39988}
+  .state.off .d{background:var(--faint)}.state .d{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .spacer{flex:1}
+  .ctl{display:flex;gap:8px}
+  button{border:0;padding:9px 16px;font:600 12.5px inherit;cursor:pointer;background:var(--surface3);color:var(--text);transition:.14s}
+  button:hover{background:#242f3d}button:disabled{opacity:.4;cursor:default}
+  button.start{background:var(--live);color:#04140b}button.start:hover{filter:brightness(1.08)}
+  button.stop{background:#2c1c1e;color:#f2a9a9}button.stop:hover{background:#3a2224}
+  button.g{background:transparent;border:1px solid var(--line2);color:var(--dim)}button.g:hover{color:var(--text);border-color:var(--faint)}
+  .stats{display:flex;gap:10px;padding:12px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .stat{background:var(--surface);border:1px solid var(--line);padding:9px 14px;min-width:120px}
+  .stat .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)}
+  .stat .v{font-size:15px;font-weight:640;font-variant-numeric:tabular-nums;margin-top:3px}
+  .console{flex:1;overflow:auto;background:#06090d;margin:0;padding:14px 22px;
+    font:12px/1.6 ui-monospace,"SF Mono",Menlo,monospace;color:#9fb0c0;white-space:pre-wrap;word-break:break-word}
+  .console .in{color:#7fe9bb}.console .warnln{color:#e6c65a}.console .errln{color:#f2a9a9}
+  .cmdrow{display:flex;gap:0;border-top:1px solid var(--line);background:#0d1117}
+  .cmdrow .pfx{padding:0 6px 0 22px;display:grid;place-items:center;color:var(--live);font-family:ui-monospace,monospace}
+  .cmdrow input{flex:1;background:transparent;border:0;color:var(--text);padding:14px 12px;font:13px ui-monospace,Menlo,monospace;outline:0}
+  .cmdrow input:disabled{opacity:.5}
+  .cmdrow button{border-radius:0}
+  #toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(8px);opacity:0;
+    background:var(--surface3);border:1px solid var(--line2);padding:9px 15px;font-size:13px;z-index:9;transition:.22s}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  ::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#1e2732;border:2px solid var(--bg)}
+</style>
+<div id="toast"></div>
+<div class="top">
+  <div class="picon" id="picon"></div>
+  <div class="tt"><h1 id="sname">Server</h1><div class="sub" id="ssub">…</div></div>
+  <span class="spacer"></span>
+  <span class="state off" id="state"><span class="d"></span><span id="statetxt">…</span></span>
+  <div class="ctl" id="ctl"></div>
+</div>
+<div class="stats" id="stats"></div>
+<pre class="console" id="console">connecting…</pre>
+<div class="cmdrow">
+  <span class="pfx">›</span>
+  <input id="cmd" placeholder="type a server command, Enter to send" autocomplete="off" spellcheck="false" disabled
+    onkeydown="if(event.key==='Enter')sendCmd()">
+  <button class="g" id="sendbtn" onclick="sendCmd()" disabled>Send</button>
+</div>
+<script>
+const $=(s)=>document.querySelector(s);
+const q=new URLSearchParams(location.search);
+const PID=q.get('p'), SID=q.get('s');
+let running=false, startedAt=null, spec=null;
+async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2400)}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtUp=ms=>{const s=Math.floor((Date.now()-ms)/1000);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:s<60?s+'s':m+'m'};
+
+async function meta(){
+  try{ const {project}=await api('/api/projects/'+PID);
+    spec=(project.servers||[]).find(s=>s.id===SID);
+    if(project.iconSvg) $('#picon').innerHTML=project.iconSvg;
+    if(spec){ $('#sname').textContent=(spec.label||SID); $('#ssub').textContent=`${project.name} · ${spec.cmd?spec.cmd.join(' '):spec.toolId||''}${spec.port?' · :'+spec.port:''}`; }
+  }catch{}
+}
+function renderCtl(){
+  $('#ctl').innerHTML = running
+    ? `<button class="g" onclick="act('restart')">Restart</button><button class="stop" onclick="act('stop')">Stop</button>`
+    : `<button class="start" onclick="act('start')">▶ Start</button>`;
+  $('#state').className='state '+(running?'on':'off');
+  $('#statetxt').textContent=running?'running':'offline';
+  $('#cmd').disabled=!running; $('#sendbtn').disabled=!running;
+  $('#stats').innerHTML=`
+    <div class="stat"><div class="k">Status</div><div class="v" style="color:${running?'var(--live)':'var(--faint)'}">${running?'Online':'Offline'}</div></div>
+    <div class="stat"><div class="k">Uptime</div><div class="v">${running&&startedAt?fmtUp(startedAt):'—'}</div></div>
+    <div class="stat"><div class="k">Port</div><div class="v">${spec&&spec.port?spec.port:'—'}</div></div>`;
+}
+async function act(a){
+  try{ toast(a+'ing…'); await api(`/api/projects/${PID}/servers/${SID}/${a}`,{method:'POST'}); setTimeout(poll,700); }
+  catch(e){ toast(e.message); }
+}
+async function sendCmd(){
+  const inp=$('#cmd'); const cmd=(inp.value||'').trim(); if(!cmd)return;
+  try{ await api(`/api/projects/${PID}/servers/${SID}/console`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({cmd})}); inp.value=''; setTimeout(poll,300); }
+  catch(e){ toast(e.message); }
+}
+async function poll(){
+  try{ const j=await api(`/api/projects/${PID}/servers/${SID}/logs`);
+    running=!!j.running; startedAt=j.startedAt||null;
+    const el=$('#console'); const atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-30;
+    el.innerHTML=(j.logs||[]).map(l=>{ const c=/^>/.test(l)?'in':/WARN|warn/.test(l)?'warnln':/ERROR|Error|Exception|error/.test(l)?'errln':''; return `<span class="${c}">${esc(l)}</span>`; }).join('\n')||'(no output — start the server)';
+    if(atBottom)el.scrollTop=el.scrollHeight;
+    renderCtl();
+  }catch(e){}
+}
+meta(); poll(); setInterval(poll,1500);
+</script>
