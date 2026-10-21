@@ -257,3 +257,30 @@ test('a scan that cannot read everything is never clean: the commit is held and 
   assert.equal(remoteHead(s.bare), pushed, 'not pushed');
   assert.match((await s.vg.status()).error, /git log: output too large to check/);
 });
+
+test('auto: the vault\'s own pre-commit hook can glob (no literal pathspecs reach it)', async () => {
+  const s = setup();
+  await created(s);
+  const hookFile = path.join(s.dir, '.git', 'hooks', 'pre-commit');
+  write(s.dir, '.git/hooks/pre-commit', '#!/bin/sh\nexec git add -- "*.gen"\n');
+  fs.chmodSync(hookFile, 0o755);
+  write(s.dir, 'Maps/a.gen', 'generated\n');
+  write(s.dir, 'Projects/p.md', '# p\n');
+  await s.vg.commitNow();
+  assert.equal((await s.vg.status()).error, null);
+  assert.equal(log(s.dir)[0], 'Vault: 2 notes');
+});
+
+test('a staged diff that could not be scanned and cannot be unstaged stops pushing', async () => {
+  let s, armed = false;
+  s = setup({ maxOut: 4000, hook: async step => { if (armed && step === 'added') { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
+  await created(s);
+  write(s.dir, 'Knowledge/big.md', 'plain line\n'.repeat(1000));
+  armed = true;
+  await s.vg.commitNow();
+  const st = await s.vg.status();
+  fs.rmSync(path.join(s.dir, '.git', 'index.lock'));
+  assert.match(st.error, /could not unstage \. .*pushing is stopped/);
+  assert.equal(st.blocked, true);
+  assert.equal(remoteHead(s.bare), null, 'nothing pushed past the unscanned files');
+});
