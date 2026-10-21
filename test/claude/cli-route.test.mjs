@@ -9,7 +9,7 @@ process.env.DECK_DATA = path.join(tmp, 'data');
 process.env.DECK_VAULT = path.join(tmp, 'vault');
 const { setDeckRoot } = await import('../../lib/core/paths.mjs');
 setDeckRoot(path.join(tmp, 'root'));
-const { cliArgs, callCli, classifyCli, cliStatus, resetCliStatus, cliInstalled, UNSET, newestClaude, resetNewestClaude, parseVersion } = await import('../../lib/claude/cli-route.mjs');
+const { cliArgs, callCli, classifyCli, cliStatus, resetCliStatus, cliInstalled, UNSET, ISOLATION_ENV, newestClaude, resetNewestClaude, parseVersion } = await import('../../lib/claude/cli-route.mjs');
 const { whichAll } = await import('../../lib/core/env.mjs');
 const kit = await import('../../lib/claude/index.mjs');
 const { readCalls, setCreditsOut } = await import('../../lib/claude/ledger.mjs');
@@ -49,7 +49,7 @@ test('cli args: no tools, no MCP servers, no slash commands, no saved session, t
   assert.equal(after('--output-format'), 'json');
   assert.deepEqual(JSON.parse(after('--json-schema')), SCHEMA);
   assert.equal(after('--tools'), '', 'every built-in tool off');
-  for (const f of ['--strict-mcp-config', '--disable-slash-commands', '--no-session-persistence']) assert.ok(a.includes(f), f);
+  for (const f of ['--safe-mode', '--strict-mcp-config', '--disable-slash-commands', '--no-session-persistence']) assert.ok(a.includes(f), f);
   assert.equal(after('--system-prompt'), 'SYS');
   assert.ok(!a.some(x => /dangerously|bypass/i.test(x)), 'never skips permissions');
   assert.ok(!cliArgs({ model: 'm', effort: 'low', system: '' }).includes('--json-schema'));
@@ -62,6 +62,8 @@ test('callCli: prompt on stdin, ANTHROPIC_* unset, a fresh empty folder that is 
   assert.equal(opts.input, 'the diff');
   assert.equal(args[args.indexOf('--system-prompt') + 1], 'rules\n\ndesign');
   assert.deepEqual([...opts.unset].sort(), ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL']);
+  assert.deepEqual(opts.env, { CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1' }, 'auto memory off: no vault, no memory in a review');
+  assert.deepEqual(ISOLATION_ENV, opts.env);
   assert.ok(cwdExisted && cwdEntries.length === 0, 'an empty folder while it runs');
   assert.ok(!fs.existsSync(opts.cwd), 'deleted afterwards');
   assert.ok(opts.timeoutMs > 0);
