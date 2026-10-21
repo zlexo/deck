@@ -233,3 +233,27 @@ test('reads never write the index (no index.lock taken while other sessions comm
   sh(s.dir, 'status', '--porcelain');
   assert.notEqual(fs.statSync(index).mtimeMs, before, 'the probe can see a write');
 });
+
+test('run(): output past maxBuffer comes back marked truncated', async () => {
+  const big = await run(process.execPath, ['-e', 'process.stdout.write("x".repeat(5000))'], { maxBuffer: 1000 });
+  assert.equal(big.truncated, true);
+  const small = await run(process.execPath, ['-e', 'process.stdout.write("x".repeat(500))'], { maxBuffer: 1000 });
+  assert.equal(small.truncated, false);
+});
+
+test('a scan that cannot read everything is never clean: the commit is held and the push does not happen', async () => {
+  const s = setup({ maxOut: 4000 });
+  await created(s);
+  await s.vg.pushNow();
+  const pushed = remoteHead(s.bare);
+  write(s.dir, 'Knowledge/big.md', `${'plain line\n'.repeat(1000)}`);
+  await s.vg.commitNow();
+  assert.equal(log(s.dir).length, 1, 'held');
+  assert.equal(staged(s.dir), '');
+  assert.match((await s.vg.status()).error, /output too large to check/);
+  sh(s.dir, 'add', '-A');
+  sh(s.dir, 'commit', '-q', '-m', 'big, by hand');
+  await s.vg.pushNow();
+  assert.equal(remoteHead(s.bare), pushed, 'not pushed');
+  assert.match((await s.vg.status()).error, /git log: output too large to check/);
+});
