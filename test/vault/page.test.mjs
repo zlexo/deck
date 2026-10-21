@@ -114,3 +114,44 @@ test('obsidian route: opens obsidian://open with the vault path encoded; 409 and
   assert.equal(r.body.url, opened[0]);
   assert.match(obsidianUrl('/a b/c'), /^obsidian:\/\/open\?path=%2Fa%20b%2Fc$/);
 });
+
+// The page's own logic, run from the page: the block between its helper markers.
+async function pageHelpers() {
+  const vm = await import('node:vm');
+  const html = fs.readFileSync(path.join(REPO, 'public', 'vault.html'), 'utf8');
+  const block = /\/\/ ---- pure helpers[^\n]*\n([\s\S]*?)\/\/ ---- end helpers/.exec(html);
+  assert.ok(block, 'vault.html has its helper block');
+  const box = {};
+  vm.runInNewContext(`${block[1]}\nObject.assign(box,{diffLines,fold,missingRoute,count});`, { box });
+  // Values made in the page's context, copied into this one so deepEqual compares them.
+  return Object.fromEntries(Object.entries(box).map(([k, f]) => [k, (...a) => JSON.parse(JSON.stringify(f(...a)))]));
+}
+
+test('page: the Connect diff marks exactly the added and removed lines', async () => {
+  const { diffLines, fold } = await pageHelpers();
+  const before = '{\n  "model": "opus",\n  "permissions": {\n    "allow": []\n  }\n}';
+  const after = '{\n  "model": "opus",\n  "permissions": {\n    "allow": [],\n    "additionalDirectories": ["/v"]\n  },\n  "autoMemoryDirectory": "/v/Memory"\n}';
+  const d = diffLines(before, after);
+  assert.deepEqual(d.filter(x => x[0] === '-').map(x => x[1]), ['    "allow": []', '  }']);
+  assert.deepEqual(d.filter(x => x[0] === '+').map(x => x[1]), ['    "allow": [],', '    "additionalDirectories": ["/v"]', '  },', '  "autoMemoryDirectory": "/v/Memory"']);
+  assert.deepEqual(d.filter(x => x[0] === ' ').map(x => x[1]), ['{', '  "model": "opus",', '  "permissions": {', '}']);
+  assert.deepEqual(diffLines(null, 'a\nb'), [['+', 'a'], ['+', 'b']], 'a new file is all added');
+  const long = diffLines('1\n2\n3\n4\n5\n6\n7\n8', '1\n2\n3\n4\n5\n6\n7\nX');
+  assert.deepEqual(fold(long, 2), [null, [' ', '6'], [' ', '7'], ['-', '8'], ['+', 'X']], 'far unchanged lines fold into one gap');
+});
+
+test('page: only the gateway\'s own 404 means a route is not there yet', async () => {
+  const { missingRoute, count } = await pageHelpers();
+  assert.equal(missingRoute(404, { error: 'not found' }), true);
+  assert.equal(missingRoute(404, { error: '~/x does not exist' }), false, 'a route\'s own 404 is an error to show');
+  assert.equal(missingRoute(409, { error: 'not found' }), false);
+  assert.equal(missingRoute(404, null), false);
+  assert.deepEqual([count(['a', 'b']), count(3), count(null)], [2, 3, 0]);
+});
+
+test('home: the Vault button shows without a vault (nothing hides it)', () => {
+  const html = fs.readFileSync(path.join(REPO, 'public', 'index.html'), 'utf8');
+  assert.match(html, /id="vaultbtn"/);
+  assert.doesNotMatch(html, /vaultbtn[^\n]*display\s*=\s*'none'/);
+  assert.doesNotMatch(html, /deckConfig\.vault/, 'the palette lists the Vault for everyone too');
+});

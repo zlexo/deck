@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   :root{color-scheme:dark;--bg:#0a0d12;--bg2:#0d1117;--surface:#12171f;--surface3:#1b2430;
-    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;--accent:#34d399;--pc:#34d399}
+    --line:#212b38;--line2:#2c3a4b;--text:#e8eef4;--dim:#8b98a7;--faint:#5f6b78;--accent:#34d399;--pc:#34d399;--warn:#fbbf24;--bad:#f87171}
   *{box-sizing:border-box}
   body{font:14px/1.55 -apple-system,system-ui,sans-serif;color:var(--text);margin:0;background:var(--bg);-webkit-font-smoothing:antialiased}
   body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -18,12 +18,13 @@
   .cap{display:flex;flex-direction:column;gap:10px}
   .cap textarea{width:100%;min-height:74px;resize:vertical;background:#0b1117;border:1px solid var(--line2);
     color:var(--text);padding:11px 13px;font:13.5px inherit;line-height:1.5}
-  .cap textarea:focus{outline:0;border-color:var(--accent)}
+  .cap textarea:focus,input:focus{outline:0;border-color:var(--accent)}
   .cap .row{display:flex;align-items:center;gap:10px}
-  .cap .hint{color:var(--faint);font-size:11.5px}
+  .hint{color:var(--faint);font-size:11.5px}
   button{border:0;padding:9px 16px;font:600 12.5px inherit;cursor:pointer;background:var(--surface3);color:var(--text);transition:.14s}
   button:hover{background:#242f3d}
   button.primary{background:var(--accent);color:#04140b}button.primary:hover{filter:brightness(1.08)}
+  button.danger{color:#fca5a5}button:disabled{opacity:.5;cursor:default}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
   @media(max-width:760px){.grid2{grid-template-columns:1fr}}
   .daily{font:12px/1.7 ui-monospace,Menlo,monospace;color:#9fb0c0;white-space:pre-wrap;word-break:break-word;
@@ -34,8 +35,8 @@
   .recent .n .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
   .tasks .t{display:flex;align-items:center;gap:9px;padding:7px 4px;font-size:12.5px;border-bottom:1px solid #131a24}
   .tasks .t:hover{background:#0f151d}
-  .tasks .cb{width:15px;height:15px;flex:none;border:1.5px solid var(--line2);cursor:pointer;display:grid;place-items:center}
-  .tasks .t.done .cb{background:var(--accent);border-color:var(--accent)}
+  .cb{width:15px;height:15px;flex:none;border:1.5px solid var(--line2);cursor:pointer;display:grid;place-items:center}
+  .tasks .t.done .cb,.check.on .cb{background:var(--accent);border-color:var(--accent)}
   .tasks .t.done .x{color:var(--faint);text-decoration:line-through}
   .tasks .x{flex:1}.tasks .pj{color:var(--faint);font-size:10.5px}
   .empty{color:var(--faint);font-size:12px;padding:14px 0;text-align:center}
@@ -51,6 +52,32 @@
   .projtime .r .fill{height:100%;background:var(--accent);display:block}
   .projtime .r .v{color:var(--faint);font-size:11px;width:56px;text-align:right;font-variant-numeric:tabular-nums}
   .weektot{font-size:11.5px;color:var(--faint);margin-bottom:10px}.weektot b{color:var(--text)}
+  /* the vault itself: setup, header, Claude Code, board, git, apps */
+  code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c9d6e2;background:#080b0f;border:1px solid var(--line);padding:1px 6px;word-break:break-all}
+  .stack{display:flex;flex-direction:column;gap:11px}
+  .top,.acts{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border:1px solid}
+  .pill.ok{color:#86efac;border-color:#1f6f52;background:#0c1f17}.pill.dim{color:var(--dim);border-color:var(--line2);background:var(--surface3)}
+  .pill.warn{color:#fcd34d;border-color:#7a5a12;background:#1f170a}.pill.bad{color:#fca5a5;border-color:#7c2a2a;background:#1f0f0f}
+  .err{color:#fca5a5;font-size:12.5px;white-space:pre-wrap}
+  .setup h2{font-size:17px;margin:0}.setup p{margin:0;color:var(--dim);font-size:13px}
+  .tree{font:12px/1.75 ui-monospace,Menlo,monospace;color:#9fb0c0;background:#080b0f;border:1px solid var(--line);padding:10px 13px;white-space:pre}
+  .tree b{color:var(--text);font-weight:600}
+  input{background:#080b0f;border:1px solid var(--line2);color:var(--text);padding:8px 10px;font:12.5px inherit;flex:1;min-width:200px}
+  .kv{display:grid;grid-template-columns:120px minmax(0,1fr);gap:7px 14px;font-size:12.5px;align-items:baseline}
+  .kv>span:nth-child(odd){color:var(--faint);font-size:11.5px}
+  .check{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--dim);cursor:pointer}.check .cb{margin-top:2px}
+  .diff{font:11.5px/1.6 ui-monospace,Menlo,monospace;background:#080b0f;border:1px solid var(--line);padding:8px 0;margin:6px 0 0;max-height:260px;overflow:auto;white-space:pre}
+  .diff div{padding:0 11px;color:#7d8b99}.diff .add{color:#86efac;background:#0c1f17}.diff .del{color:#fca5a5;background:#1f0f0f}.diff .gap{color:var(--faint)}
+  .seg{display:inline-flex;border:1px solid var(--line2)}.seg button{padding:5px 12px;font-size:11.5px;background:transparent;color:var(--dim)}
+  .seg button.on{background:var(--surface3);color:var(--text)}
+  .cols{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:10px;overflow-x:auto}
+  .col{background:#0d1219;border:1px solid var(--line);padding:9px 10px;min-width:0}
+  .col h3{margin:0 0 7px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between}
+  .card{font-size:12px;padding:6px 8px;background:var(--surface);border:1px solid var(--line);margin-bottom:5px;overflow-wrap:anywhere}
+  .card.done{color:var(--faint);text-decoration:line-through}
+  .app{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid #131a24}.app:last-child{border:0}
+  .app .grow{flex:1;min-width:0}.app .st{font-size:12px;color:var(--dim)}
   #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);opacity:0;
     background:var(--surface3);border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:9;transition:.22s}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -59,11 +86,46 @@
 <div id="toast"></div>
 <div class="wrap">
   <h1><span class="glyph"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" fill="#06120c"/><path d="M10 11 L22 9 M10 11 L14 22 M22 9 L14 22" stroke="#1f6f52" stroke-width="1.6"/><circle cx="10" cy="11" r="3" fill="#34d399"/><circle cx="22" cy="9" r="2.5" fill="#34d399"/><circle cx="14" cy="22" r="2.6" fill="#34d399"/></svg></span> Vault</h1>
-  <p class="sub">Quick-write into your second brain — capture, today, recent, tasks.</p>
+  <p class="sub">Your notes and Claude's memory: what is on the board, what Claude knows, what changed.</p>
+
+  <div class="panel setup stack" id="setup" hidden>
+    <h2>Give Claude a memory</h2>
+    <p>A private folder of plain markdown notes on this Mac. Connected, every Claude Code session reads the board before it acts and writes down what it decided and did. Deck commits each change.</p>
+    <div class="tree"><b>CLAUDE.md</b>       the operating manual Claude follows
+<b>Home.md</b>         the index of every note
+<b>Boards/Work.md</b>  Backlog, This Week, In Progress, Waiting On, Done
+<b>Daily/</b>          one note a day
+<b>Projects/</b>       one note per project
+<b>Knowledge/</b>      facts that outlive a project
+<b>Templates/</b>      project, daily and concept notes</div>
+    <div class="err" id="missing" hidden></div>
+    <div class="hint">Created in <code id="defpath"></code></div>
+    <div class="acts" id="createacts"></div>
+    <div class="lbl" style="margin:8px 0 0">Or use a folder I already have</div>
+    <div class="acts"><input id="adoptpath" placeholder="~/Documents/Notes" spellcheck="false" autocomplete="off"><button data-s="adopt">Use this folder</button></div>
+    <div class="hint">Deck uses it as it is and writes nothing into it.</div>
+    <div class="err" id="setuperr"></div>
+  </div>
+
+  <div id="main" hidden>
+  <div class="panel stack" id="head">
+    <div class="top"><code id="vpath"></code><span class="hint" id="vsrc"></span></div>
+    <div class="acts"><button data-h="obsidian">Open in Obsidian</button><button data-h="finder">Show in Finder</button><button data-h="copy">Copy path</button>
+      <span class="hint">In Obsidian: Open folder as vault, then paste the path.</span></div>
+  </div>
+
+  <div class="lbl">Claude Code</div>
+  <div class="panel stack" id="claude"><div class="empty">loading</div></div>
+
+  <div class="lbl">Board</div>
+  <div id="board"><div class="empty">loading</div></div>
+
+  <div class="lbl">Git</div>
+  <div class="panel stack" id="git"><div class="empty">loading</div></div>
 
   <div class="lbl">Quick capture</div>
   <div class="panel cap">
-    <textarea id="cap" placeholder="Jot a thought, idea, or note… (⌘/Ctrl+Enter to save to today's daily)"></textarea>
+    <textarea id="cap" placeholder="Jot a thought, idea, or note (⌘/Ctrl+Enter saves it to today's daily)"></textarea>
     <div class="row"><button class="primary" onclick="capture()">Capture → today</button><span class="hint" id="caphint">Appends to Daily/<span id="today"></span>.md</span></div>
   </div>
 
@@ -82,13 +144,191 @@
 
   <div class="lbl">Focus time · this week</div>
   <div class="panel" id="timepanel"><div class="empty">…</div></div>
+
+  <div class="lbl">Apps that use the vault</div>
+  <div class="panel" id="apps"><div class="empty">loading</div></div>
+  </div>
 </div>
 <script>
 const $=(s)=>document.querySelector(s);
-async function api(u,o){const r=await fetch(u,o);const j=await r.json();if(!r.ok)throw new Error(j.error||'failed');return j}
+const invoke=window.__TAURI__?.core?.invoke;
+async function api(u,o){const r=await fetch(u,o);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'failed');return j}
+const post=(u,b)=>api(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});
 function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2400)}
-const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const openPath=p=>api('/api/open',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({path:p})}).catch(e=>toast(e.message));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const openPath=p=>post('/api/open',{path:p}).catch(e=>toast(e.message));
+const TICK='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#04140b" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>';
+// ---- pure helpers (test/vault/page.test.mjs runs this block)
+// A line diff (longest common subsequence): [op, line] with op ' ', '+' or '-'.
+function diffLines(before,after){
+  const a=before==null?[]:String(before).split('\n'), b=after==null?[]:String(after).split('\n');
+  const n=a.length, m=b.length, L=Array.from({length:n+1},()=>new Uint32Array(m+1));
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+  const out=[]; let i=0,j=0;
+  while(i<n&&j<m){ if(a[i]===b[j]){out.push([' ',a[i]]);i++;j++;} else if(L[i+1][j]>=L[i][j+1]) out.push(['-',a[i++]]); else out.push(['+',b[j++]]); }
+  while(i<n) out.push(['-',a[i++]]); while(j<m) out.push(['+',b[j++]]);
+  return out;
+}
+// Unchanged lines more than `ctx` away from a change fold into one gap (null).
+function fold(d,ctx=2){
+  const near=d.map((_,i)=>d.slice(Math.max(0,i-ctx),i+ctx+1).some(x=>x[0]!==' '));
+  return d.reduce((o,x,i)=>{ if(near[i]) o.push(x); else if(o[o.length-1]!==null) o.push(null); return o; },[]);
+}
+// A route that is not in this gateway yet answers the gateway's own 404.
+const missingRoute=(code,body)=>code===404&&!!body&&body.error==='not found';
+const count=x=>Array.isArray(x)?x.length:(Number(x)||0);
+// ---- end helpers
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+function ago(t){ if(t==null) return ''; let ms=typeof t==='number'?(t<1e12?t*1e3:t):Date.parse(t); const s=Math.max(0,(Date.now()-ms)/1e3);
+  return s<60?'just now':s<3600?`${Math.round(s/60)} min ago`:s<86400?`${Math.round(s/3600)} h ago`:new Date(ms).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+// GET that tells a route missing from this gateway ({na:true}) from an error.
+async function read(u){ const r=await fetch(u); const j=await r.json().catch(()=>null); if(missingRoute(r.status,j)) return {na:true}; if(!r.ok) throw new Error((j&&j.error)||'failed'); return j; }
+const NA=what=>`<div class="hint">${what} is not available in this Deck yet.</div>`;
+async function openTab(id,name,url){ if(invoke){ try{ await invoke('open_tool',{id,name,url}); }catch(e){ toast('open failed: '+e); } } else window.open(url,'_blank'); }
+
+// ---- the vault: none (setup) or one (header and everything below)
+let V=null, armCreate=false;
+async function loadVault(){
+  try{ V=await api('/api/vault'); }catch(e){ return; }
+  const has=!!V.path; $('#setup').hidden=has; $('#main').hidden=!has;
+  if(!has){ $('#defpath').textContent=V.defaultPath;
+    $('#missing').hidden=!V.missing; $('#missing').textContent=V.missing?`The vault Deck recorded is missing: ${V.missing}. Plug its disk back in, or create or choose another.`:'';
+    $('#createacts').innerHTML=armCreate?`<button class="primary" data-s="create-go">Confirm create</button><button data-s="cancel">Cancel</button><span class="hint">Copies the files above into ${esc(V.defaultPath)}</span>`:`<button class="primary" data-s="create">Create</button>`;
+    return false; }
+  $('#vpath').textContent=V.display||V.path;
+  $('#vsrc').textContent={env:'set by DECK_VAULT',default:'found at the default place',state:V.created?'created by Deck':'a folder you chose'}[V.source]||'';
+  return true;
+}
+
+// ---- Claude Code
+const C={data:null,na:false,err:null,mem:true,plan:null,armed:null,busy:false};
+async function loadClaude(){ try{ const d=await read('/api/vault/claude'); C.na=!!d.na; C.data=d.na?null:d; }catch(e){ C.err=e.message; } renderClaude(); }
+function changesHtml(p){
+  return (p.changes||[]).map(c=>{ const d=fold(diffLines(c.before,c.after));
+    const tag=c.before==null?'<span class="pill ok">new file</span>':c.after==null?'<span class="pill bad">removed</span>':'<span class="pill warn">changed</span>';
+    return `<div><div class="top"><code>${esc(c.path)}</code>${tag}</div><div class="diff">${d.map(x=>x===null?'<div class="gap">  ...</div>':`<div class="${x[0]==='+'?'add':x[0]==='-'?'del':''}">${x[0]} ${esc(x[1])}</div>`).join('')}</div></div>`; }).join('')
+    +(p.backup?`<div class="hint">settings.json is backed up first to <code>${esc(p.backup)}</code></div>`:'');
+}
+function renderClaude(){
+  const el=$('#claude'), c=C.data, dis=C.busy?'disabled':'', err=C.err?`<div class="err">${esc(C.err)}</div>`:'';
+  if(C.na) return el.innerHTML=NA('Connecting Claude Code');
+  if(!c){ el.innerHTML=err||'<div class="empty">loading</div>'; return; }
+  if(!c.installed){ el.innerHTML=`<div class="top"><span class="pill bad">not installed</span><b>Claude Code not installed</b></div><div class="hint">Install Claude Code to connect it. Without it the vault is a notes folder that capture and Focus still use.</div>`; return; }
+  let h=`<div class="top">${c.connected?'<span class="pill ok">connected</span>':'<span class="pill dim">not connected</span>'}<span class="hint">Claude config folder <code>${esc(c.configDir)}</code></span></div>`;
+  if(c.connected){
+    const am=c.autoMemory||{};
+    h+=`<div class="kv"><span>Rules file</span><span><code>${esc(c.rulesFile&&c.rulesFile.path)}</code></span><span>Folder access</span><span><code>${esc(c.additionalDirectory)}</code></span>
+      <span>Auto memory</span><span>${am.on?`in the vault, <code>${esc(am.dir)}</code>`:'per repository (Claude Code\'s default)'}</span></div>`;
+    h+=C.armed==='disconnect'?`<div class="acts"><button class="danger" data-c="disconnect-go" ${dis}>${C.busy?'Disconnecting…':'Confirm disconnect'}</button><button data-c="cancel">Cancel</button><span class="hint">Removes the rules file and the keys Connect added. The vault stays.</span></div>`
+      :`<div class="acts"><button data-c="disconnect">Disconnect</button></div>`;
+  } else {
+    const n=count(c.autoMemory&&c.autoMemory.stopLoading);
+    if(c.rulesFile&&!c.rulesFile.ours) h+=`<div class="err">${esc(c.rulesFile.path)} exists and Deck did not write it, so Connect will not replace it.</div>`;
+    h+=`<div class="check ${C.mem?'on':''}" data-c="mem"><span class="cb">${C.mem?TICK:''}</span><span>Keep Claude Code's auto memory in the vault (<code>Memory/</code>), one memory for every project. ${n?`<b>${plural(n,'memory file')}</b> Claude Code keeps per repository stop loading; they stay where they are.`:'No existing memory files stop loading.'}</span></div>`;
+    h+=C.plan?`<div class="hint">Connect makes exactly these changes:</div>${changesHtml(C.plan)}<div class="acts"><button class="primary" data-c="connect-go" ${dis}>${C.busy?'Connecting…':'Confirm connect'}</button><button data-c="cancel">Cancel</button></div>`
+      :`<div class="acts"><button class="primary" data-c="connect" ${dis}>${C.busy?'Reading…':'Connect'}</button><span class="hint">Shows the changes first; nothing is written until you confirm.</span></div>`;
+  }
+  el.innerHTML=h+err;
+}
+async function claudeAct(a){
+  if(a==='mem'){ C.mem=!C.mem; C.plan=null; return renderClaude(); }
+  if(a==='cancel'){ C.plan=null; C.armed=null; return renderClaude(); }
+  if(a==='disconnect'){ C.armed='disconnect'; return renderClaude(); }
+  C.busy=true; C.err=null; renderClaude();
+  try{
+    if(a==='connect') C.plan=await post('/api/vault/connect',{autoMemory:C.mem,dryRun:true});
+    if(a==='connect-go'){ const r=await post('/api/vault/connect',{autoMemory:C.mem,dryRun:false}); C.plan=null; C.data=r.status||C.data; toast('Claude Code connected'); }
+    if(a==='disconnect-go'){ const r=await post('/api/vault/disconnect'); C.armed=null; C.data=r.status||C.data; toast('Claude Code disconnected'); }
+  }catch(e){ C.err=e.message; }
+  C.busy=false; renderClaude();
+  if(a!=='connect') loadClaude();
+}
+
+// ---- board (read-only)
+async function loadBoard(){
+  const el=$('#board');
+  try{ const b=await api('/api/vault/board');
+    if(!b.exists){ el.innerHTML=`<div class="panel hint">No ${esc(b.file)} in this vault.</div>`; return; }
+    el.innerHTML=`<div class="cols">${b.columns.map(c=>`<div class="col"><h3><span>${esc(c.title)}</span><span>${c.cards.length||''}</span></h3>
+      ${c.cards.slice(0,8).map(k=>`<div class="card ${k.done?'done':''}">${esc(k.title)}</div>`).join('')||'<div class="hint">empty</div>'}
+      ${c.cards.length>8?`<div class="hint">and ${c.cards.length-8} more</div>`:''}</div>`).join('')}</div>`;
+  }catch(e){ el.innerHTML=`<div class="panel err">${esc(e.message)}</div>`; }
+}
+
+// ---- git
+const G={data:null,na:false,err:null,armed:null,busy:false,input:'',last:null};
+const MODES={auto:'commits after 10 quiet minutes and at quit, then pushes',push:'pushes main when it is ahead; never commits',off:'status only'};
+// Re-rendered only when the status changed, so a half-typed remote survives the poll.
+async function loadGit(){ if(G.busy) return; let d; try{ d=await read('/api/vault/git'); }catch(e){ d={failed:e.message}; }
+  const s=JSON.stringify(d); if(s===G.last) return; G.last=s;
+  G.na=!!d.na; if(d.failed) G.err=d.failed; else G.data=d.na?null:d; renderGit(); }
+function privPill(p){ return p===true?'<span class="pill ok">private</span>':p===false?'<span class="pill bad">public: Deck will not push</span>':'<span class="pill warn">private check failed: not pushing</span>'; }
+function renderGit(){
+  const el=$('#git'), g=G.data, dis=G.busy?'disabled':'';
+  if(G.na) return el.innerHTML=NA('Git for the vault');
+  if(!g){ el.innerHTML=G.err?`<div class="err">${esc(G.err)}</div>`:'<div class="empty">loading</div>'; return; }
+  const seg=`<div class="acts"><span class="seg">${Object.keys(MODES).map(m=>`<button class="${g.mode===m?'on':''}" data-g="mode" data-m="${m}" ${dis}>${m}</button>`).join('')}</span><span class="hint">${esc(MODES[g.mode]||'')}</span></div>`;
+  if(!g.repo){ el.innerHTML=seg+`<div class="hint">The vault is not a git repository yet.</div>`+(g.error||G.err?`<div class="err">${esc(g.error||G.err)}</div>`:''); return; }
+  const pend=count(g.pending), lc=g.lastCommit, r=g.remote, lp=g.lastPush, mm=g.memoryMirror;
+  let h=seg+`<div class="kv"><span>Branch</span><span>${esc(g.branch||'')}</span>
+    <span>Changes waiting</span><span>${pend?plural(pend,'file'):'none'}${Array.isArray(g.pending)&&pend?`: ${g.pending.slice(0,5).map(f=>`<code>${esc(f)}</code>`).join(' ')}${pend>5?' and more':''}`:''}</span>
+    <span>Last commit</span><span>${lc?`<code>${esc(String(lc.sha||'').slice(0,7))}</code> ${esc(lc.subject)} <span class="hint">${ago(lc.at)}</span>${(lc.files||[]).length?`<div class="hint">${lc.files.slice(0,8).map(esc).join(', ')}${lc.files.length>8?` and ${lc.files.length-8} more`:''}</div>`:''}`:'none yet'}</span>
+    <span>Remote</span><span>${r?`<code>${esc(r.owner)}/${esc(r.name)}</code> ${privPill(r.private)}`:'none'}</span>`;
+  if(r) h+=`<span>Ahead / behind</span><span>${count(g.ahead)} / ${count(g.behind)}${g.behind?' <span class="hint">origin has commits this Mac does not</span>':''}</span>
+    <span>Last push</span><span>${lp?(lp.ok?`pushed <span class="hint">${ago(lp.at)}</span>`:`<span class="err">failed ${ago(lp.at)}: ${esc(lp.error)}</span>`):'never'}</span>`;
+  if(mm) h+=`<span>Memory mirror</span><span>${plural(count(mm.files),'file')} from <code>${esc(mm.from)}</code> <span class="hint">${ago(mm.at)}</span></span>`;
+  h+='</div>';
+  if(!r) h+=G.armed==='create'?`<div class="hint">Runs <code>gh repo create ${esc(G.input)} --private</code> and uses it as the remote.</div><div class="acts"><button class="primary" data-g="create-go" ${dis}>Confirm create</button><button data-g="cancel">Cancel</button></div>`
+    :`<div class="acts"><input id="remote" value="${esc(G.input)}" oninput="G.input=this.value.trim()" placeholder="owner/name, or a new repo's name" spellcheck="false" autocomplete="off"><button data-g="use" ${dis}>Use this repo</button><button data-g="create" ${dis}>Create private repo</button></div>`;
+  h+=`<div class="acts"><button data-g="commit" ${dis}>Commit now</button>`+(G.armed==='push'?`<button class="primary" data-g="push-go" ${dis}>${G.busy?'Pushing…':'Confirm push'}</button><button data-g="cancel">Cancel</button>`:`<button data-g="push" ${r&&r.private===true?dis:'disabled'}>Push now</button>`)+'</div>';
+  const errs=[g.error,G.err].filter(Boolean);
+  el.innerHTML=h+errs.map(e=>`<div class="err">${esc(e)}</div>`).join('');
+}
+async function gitAct(b){
+  const a=b.dataset.g;
+  if(a==='cancel'){ G.armed=null; return renderGit(); }
+  if(a==='push'||a==='create'){ if(a==='create'&&!G.input) return toast('a name for the new repo'); G.armed=a; return renderGit(); }
+  const body=a==='mode'?{mode:b.dataset.m}:a==='use'?{repo:G.input}:a==='create-go'?{create:G.input}:{};
+  const route={mode:'mode',use:'remote','create-go':'remote',commit:'commit','push-go':'push'}[a];
+  G.busy=true; G.err=null; renderGit();
+  try{ const r=await post('/api/vault/git/'+route,body); if(r.status) G.data=r.status; G.armed=null; if(a==='commit') toast('committed'); if(a==='push-go') toast('pushed'); }
+  catch(e){ G.err=e.message; G.armed=null; }
+  G.busy=false; renderGit();
+}
+
+// ---- apps whose deck.json says vault: true
+async function loadApps(){
+  const el=$('#apps');
+  try{ const {apps}=await api('/api/vault/apps');
+    el.innerHTML=apps.length?apps.map(a=>`<div class="app"><div class="grow"><b>${esc(a.name)}</b><div class="st">${a.status?esc(a.status):a.statusError?`<span class="hint">${esc(a.statusError)}</span>`:esc(a.description)}</div></div><button data-app="${esc(a.id)}">Open</button></div>`).join('')
+      :`<div class="hint">No installed app uses the vault yet. Apps whose deck.json says <code>vault: true</code> show here; find them on the <a href="#" data-apps style="color:var(--accent)">Apps page</a>.</div>`;
+  }catch(e){ el.innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+}
+async function openApp(id){
+  try{ const {tools}=await api('/api/tools'); const t=tools.find(x=>x.id===id); if(!t) return toast(id+' is not a tool here');
+    if(t.status!=='running'&&t.status!=='external'){ await post('/api/tools/'+id+'/start'); await new Promise(r=>setTimeout(r,900)); }
+    if(t.url) openTab(t.id,t.name,t.url); else toast('started '+t.name);
+  }catch(e){ toast(e.message); }
+}
+
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-s],[data-h],[data-c],[data-g],[data-app],[data-apps]'); if(!b) return;
+  const d=b.dataset;
+  if(d.apps!==undefined){ e.preventDefault(); return openTab('v2-apps','Apps',location.origin+'/apps.html'); }
+  if(d.app) return openApp(d.app);
+  if(d.c) return claudeAct(d.c);
+  if(d.g) return gitAct(b);
+  if(d.h==='obsidian') return post('/api/vault/obsidian').catch(err=>toast(err.message));
+  if(d.h==='finder') return openPath(V.path);
+  if(d.h==='copy') return navigator.clipboard?.writeText(V.path).then(()=>toast('path copied'),()=>toast('copy failed'));
+  if(d.s==='create'||d.s==='cancel'){ armCreate=d.s==='create'; return loadVault(); }
+  $('#setuperr').textContent='';
+  try{
+    if(d.s==='create-go') await post('/api/vault/create');
+    if(d.s==='adopt'){ const p=$('#adoptpath').value.trim(); if(!p) return; await post('/api/vault/adopt',{path:p}); }
+    armCreate=false; refresh(true);
+  }catch(err){ $('#setuperr').textContent=err.message; }
+});
 
 async function capture(){
   const ta=$('#cap'); const text=(ta.value||'').trim(); if(!text) return;
@@ -98,12 +338,12 @@ async function capture(){
 $('#cap').addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') capture(); });
 
 async function loadDaily(){ try{ const j=await api('/api/vault/daily'); $('#today').textContent=j.date;
-  $('#daily').textContent=j.exists?j.content:'(no daily note yet today — capture something to start it)'; }catch{} }
+  $('#daily').textContent=j.exists?j.content:'(no daily note yet today: capture something to start it)'; }catch{} }
 async function loadRecent(){ try{ const {notes}=await api('/api/vault/recent');
   $('#recent').innerHTML=notes.map(n=>`<div class="n" onclick="openPath('${n.path.replace(/'/g,"\\'")}')"><span class="dot"></span>${esc(n.name)}</div>`).join('')||'<div class="empty">no notes</div>'; }catch{} }
 async function loadTasks(){ try{ const {tasks}=await api('/api/tasks');
   $('#tasks').innerHTML=tasks.length?tasks.map((t,i)=>`<div class="t ${t.done?'done':''}">
-    <span class="cb" onclick="toggle(${i})">${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#04140b" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>':''}</span>
+    <span class="cb" onclick="toggle(${i})">${t.done?TICK:''}</span>
     <span class="x">${esc(t.text)}</span>${t.project?`<span class="pj">${esc(t.project)}</span>`:''}</div>`).join(''):'<div class="empty">no tasks</div>'; }catch{} }
 async function toggle(i){ try{ await api('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'toggle',index:i})}); loadTasks(); }catch(e){toast(e.message);} }
 
@@ -120,9 +360,17 @@ async function loadTime(){
     const plist=projs.map(([n,s])=>`<div class="r"><span class="nm">${esc(n)}</span><span class="track"><span class="fill" style="width:${Math.round(s/pmax*100)}%"></span></span><span class="v">${fmtDur(s)}</span></div>`).join('');
     $('#timepanel').innerHTML=(weekTot||projs.length)
       ? `<div class="weektot"><b>${fmtDur(weekTot)}</b> focused this week · <b>${fmtDur(d.total)}</b> all-time</div><div class="bars">${bars}</div>${plist?`<div class="projtime">${plist}</div>`:''}`
-      : '<div class="empty">No focus sessions logged yet — start the timer in the tab bar and it lands here.</div>';
+      : '<div class="empty">No focus sessions logged yet. Start the timer in the tab bar and it lands here.</div>';
   }catch{}
 }
-function refresh(){ loadDaily(); loadRecent(); loadTasks(); loadTime(); }
-refresh(); setInterval(refresh,6000);
+// Every 6 s: the vault and what is cheap to read. Claude Code and the apps'
+// status every 30 s (and after each action), as they ask other processes.
+let ticks=0;
+async function refresh(all){
+  if(!await loadVault()) return;
+  loadDaily(); loadRecent(); loadTasks(); loadTime(); loadBoard(); loadGit();
+  if(all||ticks%5===0){ if(!C.plan&&!C.busy) loadClaude(); loadApps(); }
+  ticks++;
+}
+refresh(true); setInterval(()=>refresh(false),6000);
 </script>
