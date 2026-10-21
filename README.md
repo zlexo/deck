@@ -315,7 +315,7 @@ either an Anthropic API key or Claude Code logged in.
 
 ## Development
 
-- `npm test`: the unit and gateway tests (254). They run with `DECK_CLI=off`,
+- `npm test`: the unit and gateway tests (327). They run with `DECK_CLI=off`,
   so no test can reach a real `claude` CLI.
 - `npm run check`: syntax of every file, the tests, and a smoke test of the
   compiled gateway with launchd's bare PATH.
@@ -325,6 +325,16 @@ either an Anthropic API key or Claude Code logged in.
   no `deck-server`, the port free, no orphaned tool. `-- --stale` and
   `-- --hung` add a crashed app and a frozen gateway (the cases are in the
   header of `scripts/check-quit.mjs`).
+- `npm run check:vault`: the live check against the real Claude Code. In a
+  throwaway Deck and a throwaway Claude config it creates a vault, connects,
+  and checks that a session in an empty folder quotes a line planted in the
+  manual (and one planted in `Memory/`), that a kit call quotes neither, and
+  that after Disconnect no session does and `settings.json` is as it was. It
+  needs a login made once in the throwaway config:
+
+  ```bash
+  CLAUDE_CONFIG_DIR="$HOME/.cache/deck-check/claude" claude auth login
+  ```
 - [`docs/v2/`](docs/v2/) holds the design contract, CI and Reviews as they
   were planned before they were built.
 
