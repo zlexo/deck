@@ -6,3 +6,6 @@ state.json
 src-tauri/binaries/
 src-tauri/target/
 *.bun-build
+
+# strings the vault template scan refuses (test/vault/template.test.mjs); never committed
+private-strings.local.txt
