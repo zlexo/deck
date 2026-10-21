@@ -91,7 +91,7 @@ test('mirror: a source file with a key is never copied; the rest is committed an
 
 test('mirror: a commit stopped half way (quit) leaves nothing staged', async () => {
   let armed = true;
-  const s = mirrored({ hook: async (step, abort) => { if (armed) { armed = false; abort(); } } });
+  const s = mirrored({ hook: async (step, abort) => { if (armed && step === 'staged') { armed = false; abort(); } } });
   await s.vg.pushNow();
   assert.equal(staged(s.dir), '');
   assert.deepEqual(log(s.dir), ['mine']);
@@ -137,7 +137,7 @@ test('mirror: a source file named "*.md" never pulls a held file into the commit
 
 test('mirror: another session\'s lock between add and reset does not stop pushing; the leftover commits later', async () => {
   let s, armed = true;
-  s = mirrored({ hook: async () => { if (armed) { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
+  s = mirrored({ hook: async step => { if (armed && step === 'staged') { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
   await s.vg.tick();
   s.clock.t = QUIET_MS; await s.vg.tick();
   const st = await s.vg.status();
@@ -153,7 +153,7 @@ test('mirror: another session\'s lock between add and reset does not stop pushin
 
 test('mirror: a pass with nothing to commit clears the last Memory error', async () => {
   let s, armed = true;
-  s = mirrored({ hook: async () => { if (armed) { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
+  s = mirrored({ hook: async step => { if (armed && step === 'staged') { armed = false; fs.writeFileSync(path.join(s.dir, '.git', 'index.lock'), ''); } } });
   await s.vg.pushNow();
   assert.match((await s.vg.status()).error, /could not unstage/);
   fs.rmSync(path.join(s.dir, '.git', 'index.lock'));
