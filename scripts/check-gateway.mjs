@@ -28,11 +28,25 @@ const stamp = { sha: 'check', builtAt: new Date().toISOString(), serverHash: cod
 const b = spawnSync(bun, ['build', '--compile', path.join(ROOT, 'server.js'), '--outfile', out, '--define', `DECK_BUILD=${JSON.stringify(stamp)}`], { cwd: tmp, encoding: 'utf8' });
 if (b.status !== 0) fail(`bun build failed:\n${b.stderr || b.stdout}`);
 
+// Its own config folder, with one tool on a bare `node` and one on `npm`, the
+// two commands the app's PATH lacks: only a real start proves the lookup.
+const config = path.join(tmp, 'config');
+fs.mkdirSync(path.join(config, 'tools'), { recursive: true });
+fs.mkdirSync(path.join(config, 'projects'), { recursive: true });
+fs.writeFileSync(path.join(config, 'state.json'), JSON.stringify({ scanRoots: [] }));
+const startable = {
+  'bare-node': ['node', '-e', 'console.log("started"); setTimeout(() => {}, 30000)'],
+  'bare-npm': ['npm', '--version'],
+};
+for (const [id, cmd] of Object.entries(startable))
+  fs.writeFileSync(path.join(config, 'tools', `${id}.json`), JSON.stringify({ id, name: id, cmd, cwd: tmp }));
+fs.writeFileSync(path.join(config, 'tools', 'no-command.json'), JSON.stringify({ id: 'no-command', name: 'no-command', cmd: ['deck-no-such-command'], cwd: tmp }));
+
 const port = await new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 child = spawn(out, [], {
   cwd: ROOT,
   env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: os.homedir(), USER: os.userInfo().username,
-         DECK_ROOT: ROOT, PORT: String(port), DECK_DATA: path.join(tmp, 'data'), DECK_VAULT: path.join(tmp, 'vault'),
+         DECK_ROOT: ROOT, PORT: String(port), DECK_CONFIG: config, DECK_DATA: path.join(tmp, 'data'), DECK_VAULT: path.join(tmp, 'vault'),
          DECK_NO_BACKGROUND: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -52,6 +66,23 @@ if (!v.compiled || v.stale) fail(`/api/version says compiled=${v.compiled} stale
 const env = (await get('/api/v2/env')).body;
 const missing = ['git', 'gh', 'node', 'npm', 'bun', 'security'].filter(c => !env.resolved[c]);
 if (missing.length) fail(`under the app's PATH these do not resolve: ${missing.join(', ')}`);
+for (const id of Object.keys(startable)) {
+  const started = await fetch(`http://127.0.0.1:${port}/api/tools/${id}/start`, { method: 'POST' });
+  const body = await started.json().catch(() => null);
+  if (started.status !== 200 || !body?.pid) fail(`starting ${id} answered ${started.status}: ${JSON.stringify(body)}`);
+  let said = [];
+  for (let i = 0; i < 100 && said.length < 2; i++) {
+    said = (await get(`/api/tools/${id}/logs`)).body.logs;
+    if (said.length < 2) await new Promise(r => setTimeout(r, 100));
+  }
+  if (said.length < 2 || said.some(l => l.includes('spawn error'))) fail(`${id} did not run. Its log:\n${said.join('\n')}`);
+}
+// Under Bun a command that cannot start keeps a null exitCode, so only this
+// build shows whether it reads as stopped.
+const refused = await fetch(`http://127.0.0.1:${port}/api/tools/no-command/start`, { method: 'POST' });
+if (refused.status === 200) fail('starting a command that does not exist answered 200');
+const row = (await get('/api/tools')).body.tools.find(x => x.id === 'no-command');
+if (row?.status !== 'stopped') fail(`a command that could not start reads as ${row?.status}`);
 const badges = await get('/api/badges');
 if (badges.status !== 200) fail(`/api/badges answered ${badges.status}`);
 const extra = (process.env.CHECK_ROUTES || '').split(',').filter(Boolean);

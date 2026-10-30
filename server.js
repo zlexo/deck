@@ -17,6 +17,10 @@ const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileP = promisify(execFile);
+// The installed app starts this gateway with launchd's PATH, where node, npm and
+// Homebrew's tools do not exist. spawn looks a command up on it and every child
+// inherits it, so it is set once, before anything starts.
+process.env.PATH = require('./lib/core/env.mjs').toolPath();
 
 const ROOT = process.env.DECK_ROOT || __dirname;  // DECK_ROOT: set by the shipped .app sidecar (Bun-compiled binary runs from inside the bundle; assets stay here)
 const PORT = Number(process.env.PORT || 8800);
@@ -293,7 +297,8 @@ function probePort(port) {
 }
 
 // A signal-killed child keeps exitCode null and sets signalCode, so check both.
-const alive = p => p && p.child && p.child.exitCode === null && p.child.signalCode === null;
+// A command that could not start has no pid and never gets an exit event.
+const alive = p => p && p.child && p.child.pid !== undefined && p.child.exitCode === null && p.child.signalCode === null;
 
 // Per-tool lifecycle lock: overlapping start/stop/restart requests raced each other
 // (two server instances / a stop landing on a fresh start — 2026-07-30). One
@@ -361,6 +366,7 @@ async function startTool(id, m, prelaunch) {
   child.stderr.on('data', d => pushLog(id, d.toString()));
   child.on('exit', (code, sig) => pushLog(id, `[deck] exited (${sig || 'code ' + code})`));
   child.on('error', e => pushLog(id, `[deck] spawn error: ${e.message}`));
+  if (child.pid === undefined) throw new Error(`could not start ${m.cmd[0]}: see its log`);
   return child.pid;
 }
 
@@ -436,6 +442,7 @@ function spawnRaw(key, cmdArr, cwd, env, prelaunch) {
   child.stderr.on('data', d => pushLog(key, d.toString()));
   child.on('exit', (c, s) => pushLog(key, `[deck] exited (${s || 'code ' + c})`));
   child.on('error', e => pushLog(key, `[deck] spawn error: ${e.message}`));
+  if (child.pid === undefined) throw new Error(`could not start ${cmdArr[0]}: see its log`);
   return child.pid;
 }
 // Stops a Deck-spawned child and resolves once it has exited: SIGTERM, then

@@ -315,7 +315,7 @@ either an Anthropic API key or Claude Code logged in.
 
 ## Development
 
-- `npm test`: the unit and gateway tests (329). They run with `DECK_CLI=off`,
+- `npm test`: the unit and gateway tests (333). They run with `DECK_CLI=off`,
   so no test can reach a real `claude` CLI.
 - `npm run check`: syntax of every file, the tests, and a smoke test of the
   compiled gateway with launchd's bare PATH.
