@@ -124,6 +124,8 @@ const r = await call({
 - `spendSummary({ state }?)` -> `{ month: 'YYYY-MM', byTool: {reviews, modlab}, total, caps: {reviews, modlab, total}, levels: {reviews, modlab, total} }`,
   level one of `ok | warn50 | warn80 | out`.
 - Tests inject fakes with `configureKit({ keyReader, clientFactory, now })`.
+  `now` is the kit's one clock: the caps, the credits-out marker and
+  `status()` all take the month from it.
 
 ## 5. CI panel (`lib/ci`)
 
