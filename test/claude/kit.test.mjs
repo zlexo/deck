@@ -208,8 +208,11 @@ test('status: key presence without reading, the presets with prices', async () =
   assert.deepEqual(s.keys, { reviews: 'present', modlab: 'present' });
   assert.equal(s.keychain.reviews.service, 'deck-anthropic-reviews');
   assert.ok(s.presets.find(p => p.id === 'review.risky').model === 'claude-opus-5-5');
-  assert.equal(s.spend.month, monthOf(NOW), 'spend for the kit clock\'s month');
   assert.ok(!JSON.stringify(s).includes(KEY));
+  // The spend is the kit clock's month; two months, so the wall clock fails one.
+  assert.equal(s.spend.month, monthOf(NOW));
+  kit.configureKit({ now: () => NEXT_MONTH });
+  assert.equal((await kit.status()).spend.month, monthOf(NEXT_MONTH));
 });
 
 test('the real Keychain: a missing item reads as missing (no prompt, no secret)', async () => {
