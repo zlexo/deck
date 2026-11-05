@@ -17,6 +17,7 @@ after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 const KEY = 'sk-ant-test-NEVER-WRITE-ME';
 const NOW = Date.UTC(2026, 9, 12, 12, 0, 0);
+const NEXT_MONTH = Date.UTC(2026, 10, 12, 12, 0, 0); // mid-month in every timezone, like NOW
 
 // A fake SDK client that records requests and answers with `respond(params, path)`.
 function fakeClient(respond) {
@@ -151,11 +152,18 @@ test('errors map to the concept table and are logged without secrets', async () 
   assert.ok(!fs.readFileSync(ledgerFile(), 'utf8').includes(KEY));
 });
 
-test('credits out raises the banner; the next good call clears it', async () => {
+// The banner is read on the kit's clock, as it is stamped. The two checks
+// below fail on the wall clock in any month: in NOW's month the next-month
+// check does, in any other month the first one does (status() on Date.now()
+// read this banner as last month's from 2026-11-01 on).
+test('credits out raises the banner; the next good call or the next month clears it', async () => {
   setup(() => { throw apiErr(402, 'billing'); });
-  await assert.rejects(kit.call(base));
-  assert.ok((await kit.status()).creditsOut, 'banner set');
+  await assert.rejects(kit.call(base), e => e.kind === 'CreditsOut');
+  assert.equal((await kit.status()).creditsOut?.ts, NOW, 'banner set, stamped on the kit clock');
+  kit.configureKit({ now: () => NEXT_MONTH });
+  assert.equal((await kit.status()).creditsOut, null, 'gone once the month turns');
   setup(() => ok('x'));
+  assert.ok((await kit.status()).creditsOut, 'still up in its own month');
   await kit.call(base);
   assert.equal((await kit.status()).creditsOut, null, 'banner cleared');
 });
@@ -200,6 +208,7 @@ test('status: key presence without reading, the presets with prices', async () =
   assert.deepEqual(s.keys, { reviews: 'present', modlab: 'present' });
   assert.equal(s.keychain.reviews.service, 'deck-anthropic-reviews');
   assert.ok(s.presets.find(p => p.id === 'review.risky').model === 'claude-opus-5-5');
+  assert.equal(s.spend.month, monthOf(NOW), 'spend for the kit clock\'s month');
   assert.ok(!JSON.stringify(s).includes(KEY));
 });
 
