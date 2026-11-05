@@ -266,6 +266,19 @@ function buildArgs(m, cfg) {
   return { args, env };
 }
 
+// "{key}" in a cmd argument is that config value, as in `url`: a server that
+// takes its port as a plain argument (`python3 -m http.server {port}`) has no
+// flag to pass it with. Only the tool's own config keys are filled, so any
+// other brace word in a command stays as written.
+function toolCmd(m, cfg) {
+  const spec = m.config || {};
+  return m.cmd.map(a => String(a).replace(/\{(\w+)\}/g, (all, k) => {
+    if (!Object.hasOwn(spec, k)) return all;
+    const v = cfg[k] ?? '';
+    return spec[k].type === 'path' ? expand(String(v)) : String(v);
+  }));
+}
+
 function toolUrl(m, cfg) {
   if (!m.url) return null;
   return m.url.replace(/\{(\w+)\}/g, (_, k) => cfg[k] ?? '');
@@ -356,17 +369,18 @@ async function startTool(id, m, prelaunch) {
   const cwd = expand(m.cwd);
   if (!fs.existsSync(cwd)) throw new Error(`cwd not found: ${cwd}`);
   const steps = [...(m.prelaunch || []), ...(prelaunch || [])];
-  const [bin, spawnArgs] = resolveSpawn([...m.cmd, ...args], cwd, steps, [...m.cmd.slice(1), ...args]);
+  const cmd = toolCmd(m, cfg);
+  const [bin, spawnArgs] = resolveSpawn([...cmd, ...args], cwd, steps, [...cmd.slice(1), ...args]);
   const { DECK_VAULT: _ownVault, ...inherited } = process.env;
   const child = spawn(bin, spawnArgs, { cwd, env: { ...inherited, ...appEnv(m), ...env } });
   procs[id] = { child, logs: [], startedAt: Date.now() };
   v2.onLaunch(id);
-  pushLog(id, `[deck] started: ${m.cmd.join(' ')} ${args.join(' ')}${prelaunchNote(steps)}`);
+  pushLog(id, `[deck] started: ${cmd.join(' ')} ${args.join(' ')}${prelaunchNote(steps)}`);
   child.stdout.on('data', d => pushLog(id, d.toString()));
   child.stderr.on('data', d => pushLog(id, d.toString()));
   child.on('exit', (code, sig) => pushLog(id, `[deck] exited (${sig || 'code ' + code})`));
   child.on('error', e => pushLog(id, `[deck] spawn error: ${e.message}`));
-  if (child.pid === undefined) throw new Error(`could not start ${m.cmd[0]}: see its log`);
+  if (child.pid === undefined) throw new Error(`could not start ${cmd[0]}: see its log`);
   return child.pid;
 }
 

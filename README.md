@@ -49,7 +49,9 @@ are scanned; `scanRoots` in `state.json` changes that).
 
 - `config` fields (`number`, `string`, `path`, `enum`, `bool`) become a CLI
   `flag` or an `env` variable; values saved in the page are passed on the next
-  start. `{key}` placeholders in `url` are filled from them.
+  start. `{key}` placeholders in `url` and `cmd` are filled from them, for a
+  server that takes its port as a plain argument
+  (`"cmd": ["python3", "-m", "http.server", "{port}"]`).
 - `paths` become buttons that open the folder in Finder.
 - A project card (`projects/*.json`) groups tools, repos, servers and a dev
   client, and shows each repo's branch, changes and ahead/behind.
