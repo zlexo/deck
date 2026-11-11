@@ -304,9 +304,13 @@ it. The app runs the same gateway, compiled, and opens each tool in its own
 tab. If the compiled gateway is older than the checkout's code, the home page
 says so instead of failing quietly.
 
+Stop takes down a tool and everything it started: the tool gets SIGTERM and
+its `stopGraceMs` (then SIGKILL), and once it has exited, whatever it left
+running (a dev server a launcher spawned) gets the same. Each tool runs in a
+process group of its own for this.
+
 Quitting the app (⌘Q, the Dock, closing its window) stops every tool it
-started, each within its own `stopGraceMs`, then the gateway, and then anything
-a tool left behind. The window goes at once; the app quits once the last tool
+started the same way, then the gateway, and then anything a tool left behind. The window goes at once; the app quits once the last tool
 has stopped. A gateway that an earlier run left running (the app crashed or
 was killed) is stopped the same way when the app starts again.
 
@@ -317,7 +321,7 @@ either an Anthropic API key or Claude Code logged in.
 
 ## Development
 
-- `npm test`: the unit and gateway tests (333). They run with `DECK_CLI=off`,
+- `npm test`: the unit and gateway tests (346). They run with `DECK_CLI=off`,
   so no test can reach a real `claude` CLI.
 - `npm run check`: syntax of every file, the tests, and a smoke test of the
   compiled gateway with launchd's bare PATH.

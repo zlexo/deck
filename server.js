@@ -372,7 +372,7 @@ async function startTool(id, m, prelaunch) {
   const cmd = toolCmd(m, cfg);
   const [bin, spawnArgs] = resolveSpawn([...cmd, ...args], cwd, steps, [...cmd.slice(1), ...args]);
   const { DECK_VAULT: _ownVault, ...inherited } = process.env;
-  const child = spawn(bin, spawnArgs, { cwd, env: { ...inherited, ...appEnv(m), ...env } });
+  const child = spawn(bin, spawnArgs, { cwd, env: { ...inherited, ...appEnv(m), ...env }, detached: true });
   procs[id] = { child, logs: [], startedAt: Date.now() };
   v2.onLaunch(id);
   pushLog(id, `[deck] started: ${cmd.join(' ')} ${args.join(' ')}${prelaunchNote(steps)}`);
@@ -384,15 +384,10 @@ async function startTool(id, m, prelaunch) {
   return child.pid;
 }
 
+// Resolves once the tool and everything it started have exited (stopProc).
 function stopTool(id, m) {
-  const p = procs[id];
-  if (!alive(p)) throw new Error('not running (or not started by the Deck)');
-  const child = p.child;
-  const grace = (m && m.stopGraceMs) || 5000; // MC servers need time to save worlds
-  child.kill('SIGTERM');
-  setTimeout(() => {
-    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-  }, grace);
+  if (!alive(procs[id])) throw new Error('not running (or not started by the Deck)');
+  return stopProc(id, (m && m.stopGraceMs) || 5000); // MC servers need time to save worlds
 }
 
 // ---------------------------------------------------------------- open in Finder
@@ -448,7 +443,7 @@ function spawnRaw(key, cmdArr, cwd, env, prelaunch) {
   if (!fs.existsSync(dir)) throw new Error(`cwd not found: ${dir}`);
   const steps = prelaunch || [];
   const [bin, args] = resolveSpawn(cmdArr, dir, steps);
-  const child = spawn(bin, args, { cwd: dir, env: { ...process.env, ...(env || {}) } });
+  const child = spawn(bin, args, { cwd: dir, env: { ...process.env, ...(env || {}) }, detached: true });
   procs[key] = { child, logs: [], startedAt: Date.now() };
   v2.onLaunch(key);
   pushLog(key, `[deck] started: ${cmdArr.join(' ')}${prelaunchNote(steps)}`);
@@ -459,17 +454,46 @@ function spawnRaw(key, cmdArr, cwd, env, prelaunch) {
   if (child.pid === undefined) throw new Error(`could not start ${cmdArr[0]}: see its log`);
   return child.pid;
 }
-// Stops a Deck-spawned child and resolves once it has exited: SIGTERM, then
-// SIGKILL after the grace (an MC server needs its world save). Null when it
-// was not running.
+// Stops a Deck-spawned child and everything it started, and resolves once
+// all of it has exited. Null when it was not running.
+//
+// Each child leads a process group of its own (startTool and spawnRaw spawn
+// it detached), so what it started can be found after it has gone. Until
+// 2026-11-11 Stop signalled the child alone: Emoton's preview exited on the
+// SIGTERM and left Remotion Studio holding port 8890 at PPID 1, so the next
+// Start said "port in use".
+//
+// The order matters. The child gets the SIGTERM first and alone, then its
+// grace (an MC server saves its world, the course VM's wrapper shuts QEMU
+// down cleanly), then a SIGKILL. Only once it has exited does the rest of its
+// group get a SIGTERM, the same grace and a SIGKILL. A SIGTERM to the whole
+// group at once would reach QEMU beside the wrapper and cut the clean
+// shutdown short. A second Stop while this runs gets the same promise.
 function stopProc(key, graceMs = 5000) {
   const p = procs[key];
+  if (p && p.stopping) return p.stopping;
   if (!alive(p)) return Promise.resolve(null);
-  return new Promise(resolve => {
+  const pgid = p.child.pid;
+  p.stopping = new Promise(resolve => {
     const t = setTimeout(() => { if (alive(p)) p.child.kill('SIGKILL'); }, graceMs);
-    p.child.once('exit', (code, signal) => { clearTimeout(t); resolve({ code, signal }); });
+    p.child.once('exit', (code, signal) => {
+      clearTimeout(t);
+      sweepGroup(key, pgid, graceMs).then(() => { p.stopping = null; resolve({ code, signal }); });
+    });
     p.child.kill('SIGTERM');
   });
+  return p.stopping;
+}
+// True while any process is left in the group (EPERM: one is, just not ours).
+const groupAlive = pgid => { try { process.kill(-pgid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+// What outlived the child that started it: SIGTERM, up to graceMs, SIGKILL.
+async function sweepGroup(key, pgid, graceMs) {
+  if (!groupAlive(pgid)) return;
+  pushLog(key, '[deck] stopping what it left running');
+  try { process.kill(-pgid, 'SIGTERM'); } catch {}
+  for (const end = Date.now() + graceMs; groupAlive(pgid) && Date.now() < end;)
+    await new Promise(r => setTimeout(r, 50));
+  if (groupAlive(pgid)) try { process.kill(-pgid, 'SIGKILL'); } catch {}
 }
 // How long a child gets between SIGTERM and SIGKILL: the stopGraceMs of the
 // tool, project server or dev client it was started as.
@@ -637,12 +661,9 @@ async function handle(req, res) {
             return json(res, 200, { ok: true, pid: await startTool(id, m) });
           }
           if (action === 'stop') { stopTool(id, m); return json(res, 200, { ok: true }); }
-          // restart
-          try { stopTool(id, m); } catch {}
-          // wait for the old process to fully exit (MC servers save on shutdown)
-          const deadline = Date.now() + ((m.stopGraceMs || 5000) + 3000);
-          while (alive(procs[id]) && Date.now() < deadline)
-            await new Promise(r => setTimeout(r, 300));
+          // restart: once the old one and all it started have exited (an MC
+          // server saves its world first)
+          await stopProc(id, m.stopGraceMs || 5000);
           await waitPortFree(m);
           return json(res, 200, { ok: true, pid: await startTool(id, m) });
         } finally { delete busy[id]; }
@@ -1029,10 +1050,12 @@ function shutdown(signal) {
   const v2Stop = Promise.race([v2.shutdown(), new Promise(r => setTimeout(r, V2_STOP_MS))]);
   Promise.allSettled([...children, v2Stop]).then(() => setTimeout(() => process.exit(0), 300));
 }
-// The longest shutdown() can take: the slowest running child's grace.
+// The longest shutdown() can take: the slowest running child's grace, twice
+// (once for the child, once for what it left running, see stopProc).
 function shutdownMs() {
   const manifests = loadManifests(), projects = loadProjects();
-  const graces = Object.keys(procs).filter(key => alive(procs[key])).map(key => graceOf(key, manifests, projects));
+  const graces = Object.keys(procs).filter(key => alive(procs[key]) || procs[key].stopping)
+    .map(key => 2 * graceOf(key, manifests, projects));
   return Math.max(V2_STOP_MS, ...graces) + 300;
 }
 process.on('SIGINT', shutdown);
