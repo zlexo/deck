@@ -4,7 +4,7 @@
 // its window went at once: it must be off the screen while deck-server is
 // still stopping the tools, not stay up frozen until the last one is done.
 //
-//   node scripts/check-quit.mjs [--app <Deck.app>] [--via quit|hand] [--stale] [--hung] [--twice] [--remove-app]
+//   node scripts/check-quit.mjs [--app <Deck.app>] [--via quit|hand] [--stale] [--hung|--stuck] [--twice] [--remove-app]
 //
 //   --via quit   a quit Apple Event (osascript), what the Dock's Quit sends: it
 //                calls the same terminate: as ⌘Q's menu item
@@ -19,8 +19,15 @@
 //   --hung       freeze the gateway (SIGSTOP) before the quit, so it can
 //                neither answer nor exit: the app must give up on it within
 //                seconds, SIGKILL it and send each of its tools a SIGTERM. No
-//                group kill (a tool may be inside its grace), so stubborn and
-//                the forker's grandchild are left by design and counted apart.
+//                group kill (a tool may be inside its grace), so stubborn, its
+//                child and the forker's grandchild are left by design and
+//                counted apart.
+//   --stuck      freeze the gateway (SIGSTOP) just after it has answered the
+//                quit and sent each tool its SIGTERM, while stubborn is still
+//                inside its grace: the gateway never sends the SIGKILLs or
+//                sweeps a group. The app must wait out the grace it was told,
+//                SIGKILL the gateway and each tool, and sweep each tool's
+//                group itself: nothing may be left. Not with --stale or --hung.
 //   --twice      a second quit 0.3 s after the first (a double ⌘Q), while the
 //                first is still stopping the tools: that quit must go on.
 //
@@ -43,7 +50,8 @@
 // in its arguments, so a survivor is found even after it has been reparented.
 //   ticker    exits at once on SIGTERM
 //   save      needs 3 s after SIGTERM to finish (a world save): must not be cut
-//   stubborn  ignores SIGTERM: the gateway has to SIGKILL it after its grace
+//   stubborn  ignores SIGTERM: the gateway has to SIGKILL it after its grace;
+//             its child is left in its group, to be swept once it has gone
 //   forker    leaves a grandchild behind when it exits
 import fs from 'node:fs';
 import os from 'node:os';
@@ -61,6 +69,7 @@ const VIA = opt('--via', 'quit');
 const STALE = argv.includes('--stale');
 const HUNG = argv.includes('--hung');
 const TWICE = argv.includes('--twice');
+const STUCK = argv.includes('--stuck');
 const REMOVE_APP = argv.includes('--remove-app');
 const MACOS = path.join(APP, 'Contents', 'MacOS');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -69,6 +78,7 @@ const die = s => { console.error(`check-quit: ${s}`); process.exit(2); };
 
 if (!['quit', 'hand'].includes(VIA)) die(`unknown --via ${VIA}`);
 if (TWICE && VIA !== 'quit') die('--twice sends the quit itself: it needs --via quit');
+if (STUCK && (STALE || HUNG || VIA !== 'quit')) die('--stuck freezes the gateway once it has answered the quit: it needs --via quit, and not --stale or --hung');
 if (!fs.existsSync(path.join(MACOS, 'deck-server'))) die(`no bundle with a deck-server at ${APP}`);
 const plist = path.join(APP, 'Contents', 'Info.plist');
 const plistKey = k => spawnSync('plutil', ['-extract', k, 'raw', '-o', '-', plist], { encoding: 'utf8' }).stdout.trim();
@@ -133,7 +143,7 @@ const tools = {
     code: `process.on('SIGTERM', () => setTimeout(() => { require('fs').writeFileSync(process.argv[1], 'saved'); process.exit(0); }, 3000)); console.log('ready'); setInterval(() => {}, 1000)`,
     args: [SAVED], stopGraceMs: 10000,
   },
-  stubborn: { code: `process.on('SIGTERM', () => {}); console.log('ready'); setInterval(() => {}, 1000)`, stopGraceMs: 1500 },
+  stubborn: { code: `require('child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)', process.argv[1] + '-child'], { stdio: 'ignore' }); process.on('SIGTERM', () => {}); console.log('ready'); setInterval(() => {}, 1000)`, stopGraceMs: 1500 },
   forker: { code: `require('child_process').spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)', process.argv[1] + '-grandchild'], { stdio: 'ignore' }); console.log('ready'); setInterval(() => {}, 1000)` },
 };
 for (const [id, { code, args = [], ...rest }] of Object.entries(tools))
@@ -187,18 +197,19 @@ for (const id of Object.keys(tools)) {
   if (r.status !== 200) await fail(`starting ${id} answered ${r.status}: ${JSON.stringify(r.body)}`);
 }
 // Each tool says ready once its SIGTERM handler is set; the forker's
-// grandchild is the fifth process.
+// grandchild and stubborn's child make six processes.
 for (const id of Object.keys(tools))
   for (let i = 0; i < 100 && !(await api(`/api/tools/${id}/logs`)).body.logs.includes('ready'); i++) await sleep(100);
-for (let i = 0; i < 100 && tagged(TAG).length < 5; i++) await sleep(100);
+for (let i = 0; i < 100 && tagged(TAG).length < 6; i++) await sleep(100);
 const app = appProcs().find(p => p.command === path.join(MACOS, 'deck'));
 const sidecar = appProcs().find(p => p.command === path.join(MACOS, 'deck-server'));
 const kids = tagged(TAG);
-if (!app || !sidecar || kids.length < 5) await fail(`expected the app, its sidecar and 5 tool processes, found ${kids.length} tagged:\n${show(table().filter(p => p.command.startsWith(MACOS) || p.command.includes(TAG)), p => p.command)}`);
+if (!app || !sidecar || kids.length < 6) await fail(`expected the app, its sidecar and 6 tool processes, found ${kids.length} tagged:\n${show(table().filter(p => p.command.startsWith(MACOS) || p.command.includes(TAG)), p => p.command)}`);
 seen = [app.pid, sidecar.pid, ...kids.map(p => p.pid)];
 const names = new Map([[app.pid, 'app (deck)'], [sidecar.pid, 'sidecar (deck-server)']]);
 const role = p => names.get(p.pid)
   || (p.command.includes(`${TAG}-forker-grandchild`) ? 'grandchild of forker' : null)
+  || (p.command.includes(`${TAG}-stubborn-child`) ? 'child of stubborn' : null)
   || Object.keys(tools).find(id => p.command.endsWith(`${TAG}-${id}`)) || p.command;
 say(`running:\n${show([app, sidecar, ...kids], role)}`);
 
@@ -270,6 +281,19 @@ if (VIA === 'quit') {
 } else {
   say(`waiting up to 10 minutes for ${NAME} to be quit by hand (⌘Q or its close button)`);
 }
+// The gateway SIGTERMs every tool as it answers: once ticker has exited, the
+// answer is out. Frozen there, it is inside stubborn's grace, before the
+// SIGKILL and before any group is swept.
+if (STUCK) {
+  const ticker = kids.find(p => role(p) === 'ticker');
+  while (tagged(TAG).some(p => p.pid === ticker.pid) && Date.now() < t0 + 15000) await sleep(5);
+  process.kill(gateway.pid, 'SIGSTOP');
+  const frozen = tagged(TAG);
+  if (frozen.some(p => p.pid === ticker.pid)) await fail('ticker was still running 15 s after the quit: the gateway never answered it');
+  if (!['stubborn', 'child of stubborn'].every(r => frozen.some(p => role(p) === r)))
+    await fail(`froze the gateway too late: stubborn or its child had already gone\n${show(frozen, role)}`);
+  say(`froze the gateway (SIGSTOP) ${Date.now() - t0} ms after the quit, once it had answered; still running:\n${show(frozen, role)}`);
+}
 
 // The app may take as long as its slowest tool's grace (save: 3 s) to go; its
 // window may not.
@@ -297,7 +321,7 @@ const saved = savedOk();
 const problems = [];
 if (left.some(p => p.command.startsWith(path.join(MACOS, 'deck-server')))) problems.push('deck-server is still running');
 if (!free) problems.push(`port ${PORT} is still taken`);
-const byDesign = HUNG ? left.filter(p => ['stubborn', 'grandchild of forker'].includes(role(p))) : [];
+const byDesign = HUNG ? left.filter(p => ['stubborn', 'child of stubborn', 'grandchild of forker'].includes(role(p))) : [];
 const orphans = left.filter(p => p.command.includes(TAG) && !byDesign.includes(p));
 if (orphans.length) problems.push(`${orphans.length} tool process(es) survived${orphans.some(p => p.ppid === 1) ? ', orphaned to launchd (PPID 1)' : ''}`);
 if (!saved) problems.push('the save tool did not finish its 3 s save');
@@ -308,7 +332,7 @@ if (problems.length) {
   if (left.length) console.error(`check-quit: survivors after the app exited (${(appGone / 1000).toFixed(1)} s):\n${show(left, role)}`);
   await fail(problems.join('; '));
 }
-const scenario = (STALE ? ' (stale gateway replaced first)' : HUNG ? ' (gateway frozen)' : '') + (TWICE ? ' (quit twice)' : '');
+const scenario = (STALE ? ' (stale gateway replaced first)' : HUNG ? ' (gateway frozen)' : STUCK ? ' (gateway frozen after it answered)' : '') + (TWICE ? ' (quit twice)' : '');
 const kept = byDesign.length ? `; left by design: ${byDesign.map(role).join(', ')}` : '';
 const windowGone = VIA === 'quit' ? `${(gone.ms / 1000).toFixed(1)} s after the quit` : `${((appGone - gone.ms) / 1000).toFixed(1)} s before the app`;
 say(`PASS${scenario} via ${VIA}: window gone ${windowGone}, with deck-server still stopping the tools; app gone in ${(appGone / 1000).toFixed(1)} s; deck-server gone, port ${PORT} free, ${left.filter(p => p.command.includes(TAG)).length} of ${kids.length} tool processes left${kept}, the save finished`);

@@ -693,9 +693,11 @@ async function handle(req, res) {
     // The native shell sends this when the app quits (decision 2026-08-10: app
     // quit stops the tools): stop everything this gateway started, then exit
     // (shutdown() below). The answer says how long that can take, so the shell
-    // knows how long to wait before it kills the gateway's process group.
+    // knows how long to wait before it kills the gateway, and the process group
+    // of every child it is stopping: a gateway that outlives that wait is
+    // SIGKILLed, and the shell stops those groups itself (stop_gateway).
     if (u.pathname === '/api/shutdown' && req.method === 'POST') {
-      json(res, 200, { ok: true, graceMs: shutdownMs() });
+      json(res, 200, { ok: true, graceMs: shutdownMs(), groups: shutdownGroups() });
       shutdown();
       return;
     }
@@ -1057,6 +1059,12 @@ function shutdownMs() {
   const graces = Object.keys(procs).filter(key => alive(procs[key]) || procs[key].stopping)
     .map(key => 2 * graceOf(key, manifests, projects));
   return Math.max(V2_STOP_MS, ...graces) + 300;
+}
+// The process group of every child shutdown() stops: each leads its own
+// (startTool and spawnRaw spawn it detached), and its pid is the group's id.
+// One whose child has exited is still listed while what it left is swept.
+function shutdownGroups() {
+  return Object.values(procs).filter(p => alive(p) || p.stopping).map(p => p.child.pid);
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
