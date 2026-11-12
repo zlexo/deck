@@ -340,11 +340,19 @@ fn gateway_serving() -> bool {
     matches!(s.read(&mut buf), Ok(n) if n > 0)
 }
 
+/// What a gateway said when it took POST /api/shutdown.
+struct Shutdown {
+    /// How long it says stopping every tool can take.
+    grace: Duration,
+    /// The process group of each tool it is stopping: each tool leads one of
+    /// its own. Empty from a gateway older than 2026-11-12, which did not say.
+    groups: Vec<libc::pid_t>,
+}
+
 /// POST /api/shutdown: the gateway stops every tool within that tool's own
-/// stopGraceMs and exits. Some(how long it says that can take) when it took
-/// the request; None when nothing answered in time or the gateway predates
-/// the route (404).
-fn request_shutdown() -> Option<Duration> {
+/// stopGraceMs and exits. Some(its answer) when it took the request; None
+/// when nothing answered in time or the gateway predates the route (404).
+fn request_shutdown() -> Option<Shutdown> {
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port())).ok()?;
     s.set_read_timeout(Some(Duration::from_secs(3))).ok()?;
     s.write_all(b"POST /api/shutdown HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
@@ -359,7 +367,13 @@ fn request_shutdown() -> Option<Duration> {
     // The body may arrive chunked: the JSON is what sits between the braces.
     let json = &body[body.find('{')?..=body.rfind('}')?];
     let answer: serde_json::Value = serde_json::from_str(json).ok()?;
-    Some(Duration::from_millis(answer.get("graceMs")?.as_u64()?))
+    let groups = answer.get("groups").and_then(|g| g.as_array()).map(|a| {
+        a.iter().filter_map(|g| g.as_i64()).map(|g| g as libc::pid_t).collect()
+    });
+    Some(Shutdown {
+        grace: Duration::from_millis(answer.get("graceMs")?.as_u64()?),
+        groups: groups.unwrap_or_default(),
+    })
 }
 
 /// Stop a gateway and everything it started (`child` is Some when this app
@@ -367,39 +381,64 @@ fn request_shutdown() -> Option<Duration> {
 /// SIGKILL it if it overruns that, then stop whatever is still in its process
 /// group, which is what a tool left behind when it exited.
 ///
-/// The group is swept only when the gateway leads a group of its own (this
-/// shell spawns it that way) and answered the request. One that did not
-/// answer is hung or older than the route, and an older gateway exits without
-/// waiting for its tools: its group can still hold a tool inside its grace
-/// (a world save, the VM's clean shutdown), which must not get a SIGKILL. Nor
-/// may the group get even a SIGTERM: QEMU is in it, beside the VM wrapper that
-/// shuts it down cleanly. A gateway SIGKILLed here leaves its tools a SIGTERM
-/// each, which is what it would have sent them itself.
+/// Each tool leads a process group of its own (since 2026-11-11), so the
+/// gateway's group no longer holds them: the gateway sweeps each tool's group
+/// itself before it exits. One that answered but overran its wait (hung
+/// halfway, a tool stuck where no signal reaches it) never gets that far, so
+/// here every tool still running gets a SIGKILL, and then each tool's group
+/// is swept, the groups it listed in its answer among them (a tool that has
+/// exited is no longer its child, but what it left is still in its group).
+/// The tool goes first, as the gateway's own stop does: its SIGTERM and its
+/// grace came from the gateway when it answered, more than twice that grace
+/// ago, so the group's SIGTERM never reaches QEMU while the course VM's
+/// wrapper is still shutting it down.
+///
+/// Nothing is swept when the gateway did not answer: it is hung or older than
+/// the route, and an older gateway exits without waiting for its tools, so a
+/// group can still hold a tool inside its grace (a world save, the VM's clean
+/// shutdown), which must not get a SIGKILL. Nor may the group get even a
+/// SIGTERM: QEMU is in it, beside the VM wrapper that shuts it down cleanly.
+/// A gateway SIGKILLed then leaves its tools a SIGTERM each, which is what it
+/// would have sent them itself.
 fn stop_gateway(pid: libc::pid_t, mut child: Option<Child>) {
     let pgid = unsafe { libc::getpgid(pid) };
     let answered = request_shutdown();
-    let grace = answered.unwrap_or_else(|| {
-        // SIGTERM runs the same shutdown (or an older gateway's own one).
-        unsafe { libc::kill(pid, libc::SIGTERM) };
-        Duration::from_secs(2)
-    });
+    let grace = match &answered {
+        Some(a) => a.grace,
+        None => {
+            // SIGTERM runs the same shutdown (or an older gateway's own one).
+            unsafe { libc::kill(pid, libc::SIGTERM) };
+            Duration::from_secs(2)
+        }
+    };
     let until = Instant::now() + grace + Duration::from_secs(3);
     while running(pid, &mut child) && Instant::now() < until {
         std::thread::sleep(Duration::from_millis(50));
     }
+    let mut groups = Vec::new();
+    if answered.is_some() && pgid == pid {
+        groups.push(pgid);
+    }
     if running(pid, &mut child) {
-        let tools = children_of(pid); // before its children are reparented
+        // Read before its children are reparented.
+        let tools: Vec<_> = children_of(pid).into_iter().map(|t| (t, unsafe { libc::getpgid(t) })).collect();
         unsafe { libc::kill(pid, libc::SIGKILL) };
-        for tool in tools {
-            unsafe { libc::kill(tool, libc::SIGTERM) };
+        for (tool, group) in tools {
+            if answered.is_some() && group == tool {
+                unsafe { libc::kill(tool, libc::SIGKILL) };
+                groups.push(group);
+            } else {
+                unsafe { libc::kill(tool, libc::SIGTERM) };
+            }
+        }
+        if let Some(a) = &answered {
+            groups.extend(&a.groups);
         }
     }
     if let Some(mut c) = child {
         let _ = c.wait();
     }
-    if answered.is_some() && pgid == pid {
-        sweep_group(pgid, grace);
-    }
+    sweep_groups(groups, grace);
 }
 
 fn running(pid: libc::pid_t, child: &mut Option<Child>) -> bool {
@@ -417,20 +456,30 @@ fn children_of(pid: libc::pid_t) -> Vec<libc::pid_t> {
         .unwrap_or_default()
 }
 
-/// Whatever is still in a gateway's group after the gateway is gone outlived
-/// the tool that started it. It gets SIGTERM and as long as the slowest tool's
-/// grace to go (it may be a server a wrapper script did not exec), then SIGKILL.
-fn sweep_group(pgid: libc::pid_t, grace: Duration) {
-    let members = || unsafe { libc::kill(-pgid, 0) == 0 };
-    if !members() {
+/// Whatever is still in a gateway's or a tool's group once the process that
+/// led it is gone outlived what started it. It gets SIGTERM and as long as
+/// the slowest tool's grace to go (it may be a server a wrapper script did not
+/// exec), then SIGKILL. All groups at once: one grace, not one per group.
+/// Never this app's own group, nor init's or the kernel's.
+fn sweep_groups(mut groups: Vec<libc::pid_t>, grace: Duration) {
+    let own = unsafe { libc::getpgrp() };
+    let members = |g: libc::pid_t| unsafe { libc::kill(-g, 0) == 0 };
+    groups.sort_unstable();
+    groups.dedup();
+    groups.retain(|&g| g > 1 && g != own && members(g));
+    if groups.is_empty() {
         return;
     }
-    unsafe { libc::kill(-pgid, libc::SIGTERM) };
+    for &g in &groups {
+        unsafe { libc::kill(-g, libc::SIGTERM) };
+    }
     let until = Instant::now() + grace;
-    while members() && Instant::now() < until {
+    while groups.iter().any(|&g| members(g)) && Instant::now() < until {
         std::thread::sleep(Duration::from_millis(50));
     }
-    unsafe { libc::kill(-pgid, libc::SIGKILL) };
+    for &g in &groups {
+        unsafe { libc::kill(-g, libc::SIGKILL) };
+    }
 }
 
 /// Stop what this app started: the gateway it spawned and every tool, or,

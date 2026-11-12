@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // The real server.js with two tools: `save` needs 2.8 s after SIGTERM to
@@ -71,6 +71,17 @@ test('POST /api/shutdown stops every tool within its grace, then the gateway exi
   assert.equal(exit.code, 0);
   assert.ok(exit.saved, 'save finished its 2.8 s save before the gateway exited');
   for (const pid of g.pids) assert.ok(gone(pid), `tool ${pid} is gone when the gateway has exited`);
+});
+
+// The shell needs these when the gateway outlives the wait it was told:
+// it SIGKILLs the gateway and stops each tool's group itself.
+test('the shutdown answer lists the process group of every tool it stops', async t => {
+  const g = await gateway(t);
+  const pgid = pid => Number(spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim());
+  for (const pid of g.pids) assert.equal(pgid(pid), pid, `tool ${pid} leads a process group of its own`);
+  const r = await g.api('/api/shutdown', 'POST');
+  assert.deepEqual([...r.body.groups].sort(), [...g.pids].sort());
+  await g.done();
 });
 
 test('SIGTERM runs the same shutdown', async t => {
